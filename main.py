@@ -92,6 +92,7 @@ async def main(page: ft.Page):
 
     # --- VIEWS ---
     def show_home():
+        input_valor.value = ""
         return ft.Column([
             ft.Container(height=40),
             ft.Text("LIMITE PARA HOJE", size=12, weight="bold", color="grey"),
@@ -110,14 +111,93 @@ async def main(page: ft.Page):
             )
         ], horizontal_alignment=ft.CrossAxisAlignment.CENTER)
 
+    async def show_contas():
+        data = await get_state()
+        contas_list = ft.Column(scroll=ft.ScrollMode.ADAPTIVE, expand=True)
+
+        async def toggle_pago(e, index):
+            data["contas"][index]["pago"] = e.control.value
+            await save_state(data)
+            await atualizar_ui()
+
+        async def remover_conta(index):
+            data["contas"].pop(index)
+            await save_state(data)
+            await render_view(1)
+            await atualizar_ui()
+
+        for i, conta in enumerate(data["contas"]):
+            contas_list.controls.append(
+                ft.ListTile(
+                    title=ft.Text(conta["nome"]),
+                    subtitle=ft.Text(f"R$ {float(conta['valor']):,.2f}"),
+                    leading=ft.Checkbox(value=conta["pago"], on_change=lambda e, idx=i: toggle_pago(e, idx)),
+                    trailing=ft.IconButton(ft.Icons.DELETE_OUTLINE, on_click=lambda e, idx=i: remover_conta(idx), icon_color=ft.Colors.RED_400)
+                )
+            )
+
+        nome_input = ft.TextField(label="Nome da Conta", expand=True)
+        valor_input = ft.TextField(label="Valor", prefix_text="R$ ", expand=True, keyboard_type=ft.KeyboardType.NUMBER)
+
+        async def add_conta(e):
+            if not nome_input.value or not valor_input.value: return
+            data["contas"].append({
+                "nome": nome_input.value,
+                "valor": float(valor_input.value.replace(",", ".")),
+                "pago": False
+            })
+            await save_state(data)
+            await render_view(1)
+            await atualizar_ui()
+
+        return ft.Column([
+            ft.Text("MINHAS CONTAS", size=20, weight="bold"),
+            ft.Row([nome_input, valor_input]),
+            ft.ElevatedButton("Adicionar Conta", icon=ft.Icons.ADD, on_click=add_conta),
+            ft.Divider(),
+            contas_list
+        ], expand=True)
+
+    async def show_settings():
+        data = await get_state()
+        
+        salario_input = ft.TextField(label="Saldo Atual no Banco", value=str(data["saldo"]), prefix_text="R$ ", keyboard_type=ft.KeyboardType.NUMBER)
+        dia_pag_input = ft.TextField(label="Dia do Pagamento", value=str(data["dia_pag"]), keyboard_type=ft.KeyboardType.NUMBER)
+        meta_input = ft.TextField(label="Meta de Sobra (Fim do Mês)", value=str(data["meta"]), prefix_text="R$ ", keyboard_type=ft.KeyboardType.NUMBER)
+        teto_input = ft.TextField(label="Teto de Gasto Diário (Opcional)", value=str(data["teto"]), prefix_text="R$ ", keyboard_type=ft.KeyboardType.NUMBER)
+
+        async def save_settings(e):
+            data["saldo"] = float(salario_input.value.replace(",", "."))
+            data["dia_pag"] = int(dia_pag_input.value)
+            data["meta"] = float(meta_input.value.replace(",", "."))
+            data["teto"] = float(teto_input.value.replace(",", "."))
+            await save_state(data)
+            await atualizar_ui()
+            page.show_snack_bar(ft.SnackBar(ft.Text("Configurações salvas!")))
+
+        return ft.Column([
+            ft.Text("CONFIGURAÇÕES", size=20, weight="bold"),
+            salario_input,
+            dia_pag_input,
+            meta_input,
+            teto_input,
+            ft.Container(height=20),
+            ft.ElevatedButton("Salvar Ajustes", icon=ft.Icons.SAVE, on_click=save_settings, width=400, height=50)
+        ], scroll=ft.ScrollMode.ADAPTIVE)
+
     # --- NAVEGAÇÃO ---
-    async def on_nav_change(e):
-        index = e.control.selected_index
+    async def render_view(index):
         page.controls.clear()
         if index == 0:
             page.add(show_home())
-        # Adicionar outras telas conforme necessário
-        await atualizar_ui()
+        elif index == 1:
+            page.add(await show_contas())
+        elif index == 2:
+            page.add(await show_settings())
+        await page.update_async()
+
+    async def on_nav_change(e):
+        await render_view(e.control.selected_index)
 
     page.navigation_bar = ft.NavigationBar(
         destinations=[
@@ -128,7 +208,8 @@ async def main(page: ft.Page):
         on_change=on_nav_change
     )
 
-    page.add(show_home())
+    await render_view(0)
     await atualizar_ui()
 
 ft.run(main)
+
