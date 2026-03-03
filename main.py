@@ -13,7 +13,7 @@ async def main(page: ft.Page):
         try:
             state = await page.shared_preferences.get("user_data")
             if state:
-                import json
+                import json 
                 return json.loads(state)
         except Exception:
             pass
@@ -161,7 +161,7 @@ async def main(page: ft.Page):
     async def show_settings():
         data = await get_state()
         
-        salario_input = ft.TextField(label="Saldo Atual no Banco", value=str(data["saldo"]), prefix=ft.Text("R$ "), keyboard_type=ft.KeyboardType.NUMBER)
+        salario_input = ft.TextField(label="Saldo Atual no Banco", placeholder="00,00", value=str(data["saldo"]), prefix=ft.Text("R$ "), keyboard_type=ft.KeyboardType.NUMBER)
         dia_pag_input = ft.TextField(label="Dia do Pagamento", value=str(data["dia_pag"]), keyboard_type=ft.KeyboardType.NUMBER)
         meta_input = ft.TextField(label="Meta de Sobra (Fim do Mês)", value=str(data["meta"]), prefix=ft.Text("R$ "), keyboard_type=ft.KeyboardType.NUMBER)
         teto_input = ft.TextField(label="Teto de Gasto Diário (Opcional)", value=str(data["teto"]), prefix=ft.Text("R$ "), keyboard_type=ft.KeyboardType.NUMBER)
