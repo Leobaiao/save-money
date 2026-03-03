@@ -173,7 +173,10 @@ async def main(page: ft.Page):
             data["teto"] = float(teto_input.value.replace(",", "."))
             await save_state(data)
             await atualizar_ui()
-            page.show_snack_bar(ft.SnackBar(ft.Text("Configurações salvas!")))
+            snackbar = ft.SnackBar(ft.Text("Configurações salvas!"))
+            page.overlay.append(snackbar)
+            snackbar.open = True
+            page.update()
 
         return ft.Column([
             ft.Text("CONFIGURAÇÕES", size=20, weight="bold"),
