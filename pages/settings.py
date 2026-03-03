@@ -23,7 +23,7 @@ def build_settings_page(
     salario_input = ft.TextField(
         label="Saldo Atual no Banco", 
         hint_text="00,00", 
-        value=str(data_state["saldo"]), 
+        value=str(round(finance_data.get_total_balance(), 2)), 
         prefix=ft.Text("R$ "), 
         keyboard_type=ft.KeyboardType.NUMBER,
         border_radius=AppStyle.BORDER_RADIUS_SM,
@@ -70,19 +70,21 @@ def build_settings_page(
 
     async def save_settings(e):
         try:
-            old_saldo = data_state["saldo"]
+            current_saldo = finance_data.get_total_balance()
             new_saldo = float(salario_input.value.replace(",", "."))
-            diff = new_saldo - old_saldo
+            diff = new_saldo - current_saldo
             
             if abs(diff) > 0.01:
                 finance_data.add_transaction(Transaction(
-                    description="Ajuste de Saldo (Ajustes)",
+                    description="Reconciliação de Saldo (Ajustes)",
                     amount=abs(diff),
                     type="receita" if diff > 0 else "despesa",
                     category_id="cat_other_in" if diff > 0 else "cat_other_out"
                 ))
             
-            data_state["saldo"] = new_saldo
+            # data_state["saldo"] não é mais usado para o valor atual, 
+            # apenas mantemos para compatibilidade se necessário, mas zerado
+            data_state["saldo"] = 0 
             data_state["dia_pag"] = int(dia_pag_input.value)
             data_state["meta"] = float(meta_input.value.replace(",", "."))
             data_state["teto"] = float(teto_input.value.replace(",", "."))

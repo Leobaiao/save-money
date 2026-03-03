@@ -24,17 +24,7 @@ def build_bills_page(
 
     async def toggle_pago(e, bill_id):
         is_pago = e.control.value
-        bill = next((t for t in finance_data.transactions if t.id == bill_id), None)
-        if not bill: return
-        
-        valor = bill.amount
-        if is_pago:
-            data_state["saldo"] -= valor
-        else:
-            data_state["saldo"] += valor
-            
         finance_data.update_transaction(bill_id, is_paid=is_pago)
-        await save_state_callback(data_state)
         await update_ui_callback()
 
     async def remover_conta(bill_id):

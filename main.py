@@ -57,7 +57,6 @@ async def main(page: ft.Page):
         
         dias_restantes = max(1, (proximo_pag - hoje).days)
         
-        # Migração de dados legados (contas em SharedPreferences para financas.json)
         if data.get("contas"):
             for c in data["contas"]:
                 finance_data.add_transaction(Transaction(
@@ -71,11 +70,26 @@ async def main(page: ft.Page):
             data["contas"] = []
             await save_state(data)
 
+        # Migração de saldo legado (se houver saldo no SharedPreferences mas nenhuma transação)
+        current_total = finance_data.get_total_balance()
+        if data.get("saldo", 0) > 0 and len(finance_data.transactions) == 0:
+            finance_data.add_transaction(Transaction(
+                description="Saldo Inicial (Migração)",
+                amount=data["saldo"],
+                type="receita",
+                category_id="cat_other_in"
+            ))
+            data["saldo"] = 0 # Zeramos para usar apenas o FinanceData daqui pra frente
+            await save_state(data)
+
+        # Buscar saldo real do FinanceData
+        saldo_real = finance_data.get_total_balance()
+        
         # Buscar contas não pagas do FinanceData
         contas_abertas_list = finance_data.get_bills(is_paid=False)
         contas_abertas = sum(t.amount for t in contas_abertas_list)
         
-        disponivel_total = data["saldo"] - contas_abertas
+        disponivel_total = saldo_real - contas_abertas
         limite_com_meta = max(0, (disponivel_total - data["meta"]) / dias_restantes)
 
         teto = data["teto"]
@@ -119,9 +133,7 @@ async def main(page: ft.Page):
             valor = float(input_valor.value.replace(",", "."))
         except ValueError: return
             
-        data["saldo"] -= valor
-        await save_state(data)
-        
+        # Registrar transação no histórico JSON
         finance_data.add_transaction(Transaction(
             description="Gasto Rápido (Home)",
             amount=valor,

@@ -142,8 +142,11 @@ class FinanceData:
         category_id: Optional[str] = None,
         month: Optional[int] = None,
         year: Optional[int] = None,
+        only_paid: bool = True
     ) -> list[Transaction]:
         result = self.transactions
+        if only_paid:
+            result = [t for t in result if t.is_paid]
         if type_filter:
             result = [t for t in result if t.type == type_filter]
         if category_id:
@@ -203,17 +206,24 @@ class FinanceData:
 
     # ─── Cálculos ──────────────────────────────────────────────────────────
 
+    def get_total_balance(self) -> float:
+        """Calcula o saldo total acumulado de todas as transações pagas."""
+        # Filtramos apenas transações pagas (is_paid=True)
+        receitas = sum(t.amount for t in self.transactions if t.type == "receita" and t.is_paid)
+        despesas = sum(t.amount for t in self.transactions if t.type == "despesa" and t.is_paid)
+        return receitas - despesas
+
     def get_balance(self, month: Optional[int] = None, year: Optional[int] = None) -> float:
         income = self.get_total_income(month, year)
         expense = self.get_total_expense(month, year)
         return income - expense
 
     def get_total_income(self, month: Optional[int] = None, year: Optional[int] = None) -> float:
-        txns = self.get_transactions(type_filter="receita", month=month, year=year)
+        txns = self.get_transactions(type_filter="receita", month=month, year=year, only_paid=True)
         return sum(t.amount for t in txns)
 
     def get_total_expense(self, month: Optional[int] = None, year: Optional[int] = None) -> float:
-        txns = self.get_transactions(type_filter="despesa", month=month, year=year)
+        txns = self.get_transactions(type_filter="despesa", month=month, year=year, only_paid=True)
         return sum(t.amount for t in txns)
 
     def get_expenses_by_category(

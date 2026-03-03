@@ -66,11 +66,25 @@ def create_transaction_card(
                     spacing=4,
                     expand=True,
                 ),
-                ft.Text(
-                    f"{sign} R$ {txn.amount:,.2f}",
-                    size=16,
-                    color=amount_color,
-                    weight=ft.FontWeight.BOLD,
+                ft.Column(
+                    [
+                        ft.Row([
+                            ft.Text(
+                                f"{sign} R$ {txn.amount:,.2f}",
+                                size=16,
+                                color=amount_color if txn.is_paid else sub_color,
+                                weight=ft.FontWeight.BOLD,
+                            ),
+                            ft.Container(
+                                content=ft.Text("PENDENTE", size=9, weight="bold", color="white"),
+                                bgcolor=AppColors.EXPENSE,
+                                padding=ft.padding.symmetric(horizontal=6, vertical=2),
+                                border_radius=4,
+                                visible=not txn.is_paid
+                            )
+                        ], spacing=8, alignment=ft.MainAxisAlignment.END),
+                    ],
+                    horizontal_alignment=ft.CrossAxisAlignment.END,
                 ),
                 ft.PopupMenuButton(
                     icon=ft.Icons.MORE_VERT_ROUNDED,
