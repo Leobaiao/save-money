@@ -30,7 +30,7 @@ def build_dashboard(
 
     # ─── Cards de Resumo ───────────────────────────────────────────────
     balance_color = AppColors.INCOME if balance >= 0 else AppColors.EXPENSE
-    summary_cards = ft.Row(
+    summary_cards = ft.Column(
         [
             create_summary_card(
                 "Saldo do Mês",
@@ -54,7 +54,7 @@ def build_dashboard(
                 is_dark,
             ),
         ],
-        spacing=16,
+        spacing=12,
     )
 
     # ─── Gráfico de Barras (últimos 6 meses) ──────────────────────────
@@ -126,7 +126,7 @@ def build_dashboard(
                 ft.Container(height=10),
 
                 # Gráficos
-                ft.Row(
+                ft.Column(
                     [
                         ft.Container(
                             content=ft.Column(
@@ -136,8 +136,8 @@ def build_dashboard(
                                 ],
                                 spacing=10,
                             ),
-                            expand=3,
                         ),
+                        ft.Container(height=10),
                         ft.Container(
                             content=ft.Column(
                                 [
@@ -146,7 +146,6 @@ def build_dashboard(
                                 ],
                                 spacing=10,
                             ),
-                            expand=2,
                         ),
                     ],
                     spacing=16,

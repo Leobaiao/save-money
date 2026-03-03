@@ -86,6 +86,63 @@ async def main(page: ft.Page):
         page.overlay.append(ft.SnackBar(ft.Text("Gasto registrado!"), bgcolor=AppColors.INCOME, open=True))
         page.update()
 
+    async def open_quick_expense(e):
+        valor_input = ft.TextField(
+            label="Quanto você gastou?",
+            prefix=ft.Text("R$ "),
+            keyboard_type=ft.KeyboardType.NUMBER,
+            autofocus=True,
+            border_radius=12,
+            border_color=AppColors.PRIMARY,
+        )
+        
+        async def save_quick(e):
+            if not valor_input.value: return
+            try:
+                val = float(valor_input.value.replace(",", "."))
+                finance_data.add_transaction(Transaction(
+                    description="Gasto Rápido (FAB)",
+                    amount=val,
+                    type="despesa",
+                    category_id="cat_other_out"
+                ))
+                page.bottom_sheet.open = False
+                await atualizar_ui()
+                page.overlay.append(ft.SnackBar(ft.Text("Gasto registrado!"), bgcolor=AppColors.INCOME, open=True))
+                page.update()
+            except ValueError: pass
+
+        page.bottom_sheet = ft.BottomSheet(
+            ft.Container(
+                ft.Column(
+                    [
+                        ft.Text("REGISTRAR GASTO", size=16, weight="bold", color=AppColors.PRIMARY),
+                        valor_input,
+                        ft.ElevatedButton(
+                            "Confirmar Gasto",
+                            icon=ft.Icons.CHECK_CIRCLE_ROUNDED,
+                            on_click=save_quick,
+                            style=ft.ButtonStyle(
+                                bgcolor=AppColors.PRIMARY,
+                                color="white",
+                                padding=20,
+                                shape=ft.RoundedRectangleBorder(radius=12),
+                            ),
+                        ),
+                        ft.Container(height=10),
+                    ],
+                    tight=True,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    spacing=20,
+                ),
+                padding=30,
+                bgcolor=AppColors.DARK_SURFACE if is_dark else ft.Colors.WHITE,
+                border_radius=ft.border_radius.only(top_left=20, top_right=20),
+            ),
+            open=True,
+        )
+        page.update()
+
     async def atualizar_ui():
         res = finance_data.get_burn_rate_data()
 
@@ -188,6 +245,13 @@ async def main(page: ft.Page):
         on_change=on_nav_change,
         selected_index=0,
         height=70
+    )
+
+    page.floating_action_button = ft.FloatingActionButton(
+        icon=ft.Icons.ADD,
+        bgcolor=AppColors.PRIMARY,
+        on_click=open_quick_expense,
+        tooltip="Registrar Gasto"
     )
 
     await atualizar_ui()

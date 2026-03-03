@@ -164,7 +164,7 @@ def build_reports_page(
         content=ft.Column(
             [
                 # Header
-                ft.Row(
+                ft.Column(
                     [
                         ft.Column(
                             [
@@ -172,20 +172,24 @@ def build_reports_page(
                                 ft.Text("Análise detalhada das suas finanças", size=14, color=sub_color),
                             ],
                             spacing=4,
-                            expand=True,
                         ),
-                        year_dropdown,
-                        month_dropdown,
+                        ft.Row(
+                            [
+                                ft.Container(year_dropdown, expand=True),
+                                ft.Container(month_dropdown, expand=True),
+                            ],
+                            spacing=12,
+                        ),
                     ],
-                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    spacing=16,
                 ),
                 ft.Container(height=16),
 
                 # Resumo + Top Categorias
-                ft.Row(
+                ft.Column(
                     [
-                        ft.Container(content=summary_table, expand=1),
-                        ft.Container(content=top_categories_card, expand=1),
+                        summary_table,
+                        top_categories_card,
                     ],
                     spacing=16,
                 ),
