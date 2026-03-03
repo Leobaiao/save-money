@@ -27,22 +27,32 @@ def build_bills_page(
         finance_data.update_transaction(bill_id, is_paid=is_pago)
         await update_ui_callback()
 
-    async def remover_conta(bill_id):
+    async def remover_conta(e, bill_id):
         finance_data.delete_transaction(bill_id)
         await update_ui_callback()
+
+    def make_toggle_handler(bill_id):
+        async def handler(e):
+            await toggle_pago(e, bill_id)
+        return handler
+
+    def make_remove_handler(bill_id):
+        async def handler(e):
+            await remover_conta(e, bill_id)
+        return handler
 
     for i, bill in enumerate(bills):
         contas_list_view.controls.append(
             ft.Container(
                 content=ft.Row([
-                    ft.Checkbox(value=bill.is_paid, on_change=lambda e, b_id=bill.id: toggle_pago(e, b_id)),
+                    ft.Checkbox(value=bill.is_paid, on_change=make_toggle_handler(bill.id)),
                     ft.Column([
                         ft.Text(bill.description, size=16, weight=ft.FontWeight.W_600, color=text_color),
                         ft.Text(f"R$ {bill.amount:,.2f}", size=14, color=sub_color),
                     ], expand=True, spacing=0),
                     ft.IconButton(
                         ft.Icons.DELETE_OUTLINE_ROUNDED, 
-                        on_click=lambda e, b_id=bill.id: remover_conta(b_id), 
+                        on_click=make_remove_handler(bill.id), 
                         icon_color=AppColors.EXPENSE,
                         tooltip="Remover Conta"
                     )
