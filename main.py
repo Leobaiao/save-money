@@ -142,6 +142,9 @@ async def main(page: ft.Page):
         apply_theme()
         await atualizar_ui()
 
+    async def on_nav_change(e):
+        await render_view(e.control.selected_index)
+
     async def render_view(index):
         page.controls.clear()
 
@@ -182,7 +185,7 @@ async def main(page: ft.Page):
             ft.NavigationBarDestination(icon=ft.Icons.RECEIPT_LONG_OUTLINED, selected_icon=ft.Icons.RECEIPT_LONG_ROUNDED, label="Contas"),
             ft.NavigationBarDestination(icon=ft.Icons.SETTINGS_OUTLINED, selected_icon=ft.Icons.SETTINGS_ROUNDED, label="Ajustes"),
         ],
-        on_change=lambda e: render_view(e.control.selected_index),
+        on_change=on_nav_change,
         selected_index=0,
         height=70
     )
