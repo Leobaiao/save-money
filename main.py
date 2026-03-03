@@ -38,14 +38,42 @@ async def main(page: ft.Page):
 
     # --- QUICK EXPENSE FAB ---
     async def open_quick_expense(e):
-        tipo_toggle = ft.SegmentedButton(
-            segments=[
-                ft.Segment(value="despesa", label=ft.Text("Gasto"), icon=ft.Icon(ft.Icons.TRENDING_DOWN_ROUNDED)),
-                ft.Segment(value="receita", label=ft.Text("Lucro"), icon=ft.Icon(ft.Icons.TRENDING_UP_ROUNDED)),
-            ],
-            selected={"despesa"},
-            allow_multiple_selection=False,
-            selected_icon=ft.Icon(ft.Icons.CHECK),
+        # Estado do tipo selecionado
+        tipo_state = {"value": "despesa"}
+        
+        tipo_label = ft.Text("GASTO", size=14, weight="bold", color=AppColors.EXPENSE)
+        
+        def toggle_tipo(ev):
+            if tipo_state["value"] == "despesa":
+                tipo_state["value"] = "receita"
+                tipo_label.value = "RECEITA"
+                tipo_label.color = AppColors.INCOME
+                toggle_btn.icon = ft.Icons.TRENDING_UP_ROUNDED
+                toggle_btn.icon_color = AppColors.INCOME
+            else:
+                tipo_state["value"] = "despesa"
+                tipo_label.value = "GASTO"
+                tipo_label.color = AppColors.EXPENSE
+                toggle_btn.icon = ft.Icons.TRENDING_DOWN_ROUNDED
+                toggle_btn.icon_color = AppColors.EXPENSE
+            page.update()
+
+        toggle_btn = ft.IconButton(
+            icon=ft.Icons.TRENDING_DOWN_ROUNDED,
+            icon_color=AppColors.EXPENSE,
+            icon_size=28,
+            on_click=toggle_tipo,
+            tooltip="Alternar Gasto/Receita",
+        )
+        
+        tipo_toggle = ft.Container(
+            content=ft.Row([
+                toggle_btn,
+                tipo_label,
+            ], alignment=ft.MainAxisAlignment.CENTER, spacing=8),
+            border_radius=12,
+            border=ft.Border.all(1, AppColors.DARK_BORDER if is_dark else AppColors.LIGHT_BORDER),
+            padding=ft.Padding(10, 6, 10, 6),
         )
 
         loja_input = ft.TextField(
@@ -85,7 +113,7 @@ async def main(page: ft.Page):
 
             try:
                 val = float(valor_input.value.replace(",", "."))
-                tipo = list(tipo_toggle.selected)[0]
+                tipo = tipo_state["value"]
                 
                 final_desc = loja_input.value
                 if desc_input.value:
