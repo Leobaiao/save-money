@@ -1,5 +1,6 @@
 import flet as ft
 from datetime import datetime, date
+from models.data_model import FinanceData, Transaction
 
 async def main(page: ft.Page):
     page.title = "Daily Burn Rate"
@@ -7,6 +8,9 @@ async def main(page: ft.Page):
     page.window.width = 400
     page.window.height = 700
     page.padding = 20
+
+    # --- GERENCIADOR DE DADOS FINANCEIROS ---
+    finance_data = FinanceData()
 
     # --- PERSISTÊNCIA (Native SharedPreferences) ---
     async def get_state():
@@ -80,6 +84,15 @@ async def main(page: ft.Page):
             
         data["saldo"] -= valor
         await save_state(data)
+        
+        # Registrar transação no histórico JSON
+        finance_data.add_transaction(Transaction(
+            description="Gasto Rápido (Home)",
+            amount=valor,
+            type="despesa",
+            category_id="cat_other_out"
+        ))
+        
         input_valor.value = ""
         await atualizar_ui()
         
@@ -116,7 +129,22 @@ async def main(page: ft.Page):
         contas_list = ft.Column(scroll=ft.ScrollMode.ADAPTIVE, expand=True)
 
         async def toggle_pago(e, index):
-            data["contas"][index]["pago"] = e.control.value
+            is_pago = e.control.value
+            conta = data["contas"][index]
+            valor = float(conta["valor"])
+            
+            if is_pago:
+                data["saldo"] -= valor
+                finance_data.add_transaction(Transaction(
+                    description=f"Pagamento: {conta['nome']}",
+                    amount=valor,
+                    type="despesa",
+                    category_id="cat_bills"
+                ))
+            else:
+                data["saldo"] += valor
+                
+            data["contas"][index]["pago"] = is_pago
             await save_state(data)
             await atualizar_ui()
 
@@ -167,7 +195,19 @@ async def main(page: ft.Page):
         teto_input = ft.TextField(label="Teto de Gasto Diário (Opcional)", value=str(data["teto"]), prefix=ft.Text("R$ "), keyboard_type=ft.KeyboardType.NUMBER)
 
         async def save_settings(e):
-            data["saldo"] = float(salario_input.value.replace(",", "."))
+            old_saldo = data["saldo"]
+            new_saldo = float(salario_input.value.replace(",", "."))
+            diff = new_saldo - old_saldo
+            
+            if abs(diff) > 0.01:
+                finance_data.add_transaction(Transaction(
+                    description="Ajuste de Saldo (Ajustes)",
+                    amount=abs(diff),
+                    type="receita" if diff > 0 else "despesa",
+                    category_id="cat_other_in" if diff > 0 else "cat_other_out"
+                ))
+            
+            data["saldo"] = new_saldo
             data["dia_pag"] = int(dia_pag_input.value)
             data["meta"] = float(meta_input.value.replace(",", "."))
             data["teto"] = float(teto_input.value.replace(",", "."))
