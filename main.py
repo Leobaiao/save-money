@@ -1,6 +1,7 @@
 import flet as ft
 from datetime import datetime, date
 import json
+import re
 
 from models.data_model import FinanceData, Transaction
 from theme.app_theme import AppColors, AppStyle, get_dark_theme, get_light_theme
@@ -35,6 +36,37 @@ async def main(page: ft.Page):
         page.update()
 
     apply_theme()
+
+    # --- LEITOR DE QR CODE ---
+    active_scan_target = None
+
+    def on_scan_result(e):
+        nonlocal active_scan_target
+        if not e.data: return
+        
+        # Tentar extrair valor (ex: R$ 10,50 ou apenas 10.50)
+        price_match = re.search(r"(\d+[,.]\d{2})", e.data)
+        if price_match:
+            val = price_match.group(1).replace(",", ".")
+            if active_scan_target:
+                active_scan_target.value = val
+                page.update()
+        else:
+            # Se não achar preço, joga o texto bruto no campo
+            if active_scan_target:
+                active_scan_target.value = e.data
+                page.update()
+        
+        page.overlay.append(ft.SnackBar(ft.Text(f"Código lido: {e.data[:30]}..."), open=True))
+        page.update()
+
+    barcode_scanner = ft.BarcodeScanner(on_result=on_scan_result)
+    page.overlay.append(barcode_scanner)
+
+    async def start_scan(target_field):
+        nonlocal active_scan_target
+        active_scan_target = target_field
+        await barcode_scanner.scan()
 
     # --- COMPONENTES PERSISTENTES DA HOME (BURN RATE) ---
     display_limite = ft.Text("R$ 0,00", size=42, weight="bold", color=AppColors.INCOME)
@@ -171,7 +203,14 @@ async def main(page: ft.Page):
                         ], alignment=ft.MainAxisAlignment.CENTER, spacing=10),
                         tipo_toggle,
                         loja_input,
-                        valor_input,
+                        ft.Row([
+                            ft.Container(valor_input, expand=True),
+                            ft.IconButton(
+                                ft.Icons.QR_CODE_SCANNER_ROUNDED,
+                                icon_color=AppColors.PRIMARY,
+                                on_click=lambda _: start_scan(valor_input)
+                            )
+                        ], spacing=10),
                         desc_input,
                         ft.ElevatedButton(
                             "Registrar Agora",
@@ -247,6 +286,20 @@ async def main(page: ft.Page):
             margin=ft.margin.only(bottom=15)
         )
 
+    # Injetar o botão de Scan no header da Home
+    def get_burn_rate_header_with_scan():
+        header = get_burn_rate_header()
+        # O header é um Container com uma Column
+        # A última Row tem o input e o botão de add. Vamos mudar para incluir o scan.
+        row_inputs = header.content.controls[-1] 
+        row_inputs.controls.insert(1, ft.IconButton(
+            ft.Icons.QR_CODE_SCANNER_ROUNDED,
+            icon_color=AppColors.PRIMARY,
+            on_click=lambda _: start_scan(input_valor),
+            tooltip="Escanear Nota/Preço"
+        ))
+        return header
+
     # --- NAVEGAÇÃO ---
     async def toggle_theme():
         nonlocal is_dark
@@ -279,7 +332,7 @@ async def main(page: ft.Page):
             finance_data.save()
 
         if index == 0:
-            page.add(build_dashboard(finance_data, is_dark, header_view=get_burn_rate_header()))
+            page.add(build_dashboard(finance_data, is_dark, header_view=get_burn_rate_header_with_scan()))
         elif index == 1:
             page.add(build_transactions_page(finance_data, is_dark, page, on_refresh=atualizar_ui))
         elif index == 2:
