@@ -8,26 +8,22 @@ async def main(page: ft.Page):
     page.window.height = 700
     page.padding = 20
 
-    # --- PERSISTÊNCIA (Arquivo Local JSON) ---
-    import json
-    import os
-    
-    DB_FILE = "user_data.json"
-
+    # --- PERSISTÊNCIA (Native SharedPreferences) ---
     async def get_state():
-        if os.path.exists(DB_FILE):
-            try:
-                with open(DB_FILE, "r") as f:
-                    return json.load(f)
-            except Exception:
-                pass
+        try:
+            state = await page.shared_preferences.get("user_data")
+            if state:
+                import json
+                return json.loads(state)
+        except Exception:
+            pass
         return {
             "dia_pag": 5, "saldo": 0.0, "meta": 0.0, "teto": 0.0, "contas": []
         }
 
     async def save_state(data):
-        with open(DB_FILE, "w") as f:
-            json.dump(data, f, indent=4)
+        import json
+        await page.shared_preferences.set("user_data", json.dumps(data))
 
     # --- LÓGICA ECONÔMICA ---
     async def calcular_limite():
