@@ -81,6 +81,12 @@ class FinanceData:
     def __init__(self):
         self.transactions: list[Transaction] = []
         self.categories: list[Category] = []
+        self.settings: dict = {
+            "dia_pag": 5,
+            "meta": 0.0,
+            "teto": 0.0,
+            "is_dark": True
+        }
         self._load()
 
     # ─── Persistência ──────────────────────────────────────────────────────
@@ -92,6 +98,7 @@ class FinanceData:
                     data = json.load(f)
                 self.transactions = [Transaction.from_dict(t) for t in data.get("transactions", [])]
                 self.categories = [Category.from_dict(c) for c in data.get("categories", [])]
+                self.settings.update(data.get("settings", {}))
             except (json.JSONDecodeError, KeyError):
                 self._init_defaults()
         else:
@@ -107,6 +114,7 @@ class FinanceData:
         data = {
             "transactions": [t.to_dict() for t in self.transactions],
             "categories": [c.to_dict() for c in self.categories],
+            "settings": self.settings
         }
         with open(DATA_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
@@ -151,17 +159,20 @@ class FinanceData:
             result = [t for t in result if t.type == type_filter]
         if category_id:
             result = [t for t in result if t.category_id == category_id]
-        if month and year:
-            result = [
-                t for t in result
-                if datetime.fromisoformat(t.date).month == month
-                and datetime.fromisoformat(t.date).year == year
-            ]
-        elif year:
-            result = [t for t in result if datetime.fromisoformat(t.date).year == year]
-        
-        # Filtro padrão: apenas transações pagas (exceto se for para listagem de contas)
-        return sorted(result, key=lambda t: t.date, reverse=True)
+
+        filtered = []
+        for t in result:
+            t_date = datetime.fromisoformat(t.date)
+            if month and year:
+                if t_date.month == month and t_date.year == year:
+                    filtered.append(t)
+            elif year:
+                if t_date.year == year:
+                    filtered.append(t)
+            else:
+                filtered.append(t)
+
+        return sorted(filtered, key=lambda t: t.date, reverse=True)
 
     def get_bills(self, is_paid: Optional[bool] = None) -> list[Transaction]:
         """Retorna transações marcadas como fixas (contas)."""
@@ -170,45 +181,9 @@ class FinanceData:
             result = [t for t in result if t.is_paid == is_paid]
         return sorted(result, key=lambda t: t.date, reverse=True)
 
-    # ─── CRUD de Categorias ────────────────────────────────────────────────
-
-    def add_category(self, cat: Category) -> Category:
-        self.categories.append(cat)
-        self.save()
-        return cat
-
-    def update_category(self, cat_id: str, **kwargs) -> Optional[Category]:
-        for cat in self.categories:
-            if cat.id == cat_id:
-                for key, value in kwargs.items():
-                    if hasattr(cat, key):
-                        setattr(cat, key, value)
-                self.save()
-                return cat
-        return None
-
-    def delete_category(self, cat_id: str) -> bool:
-        original_len = len(self.categories)
-        self.categories = [c for c in self.categories if c.id != cat_id]
-        if len(self.categories) < original_len:
-            self.save()
-            return True
-        return False
-
-    def get_category_by_id(self, cat_id: str) -> Optional[Category]:
-        for cat in self.categories:
-            if cat.id == cat_id:
-                return cat
-        return None
-
-    def get_categories_by_type(self, type_filter: str) -> list[Category]:
-        return [c for c in self.categories if c.type == type_filter]
-
     # ─── Cálculos ──────────────────────────────────────────────────────────
 
     def get_total_balance(self) -> float:
-        """Calcula o saldo total acumulado de todas as transações pagas."""
-        # Filtramos apenas transações pagas (is_paid=True)
         receitas = sum(t.amount for t in self.transactions if t.type == "receita" and t.is_paid)
         despesas = sum(t.amount for t in self.transactions if t.type == "despesa" and t.is_paid)
         return receitas - despesas
@@ -238,7 +213,6 @@ class FinanceData:
         return result
 
     def get_monthly_summary(self, year: int) -> list[dict]:
-        """Retorna resumo mensal (receitas, despesas) para cada mês do ano."""
         summary = []
         for month in range(1, 13):
             income = self.get_total_income(month=month, year=year)
@@ -250,3 +224,63 @@ class FinanceData:
                 "balance": income - expense,
             })
         return summary
+
+    def get_category_by_id(self, cat_id: str) -> Optional[Category]:
+        for cat in self.categories:
+            if cat.id == cat_id:
+                return cat
+        return None
+
+    # ─── Lógica de Burn Rate ───────────────────────────────────────────────
+
+    def get_burn_rate_data(self):
+        hoje = date.today()
+        dia_pag = self.settings.get("dia_pag", 5)
+
+        # Calcular próximo pagamento
+        try:
+            proximo_pag = date(hoje.year, hoje.month, dia_pag)
+            if hoje.day >= dia_pag:
+                if hoje.month < 12:
+                    proximo_pag = date(hoje.year, hoje.month + 1, dia_pag)
+                else:
+                    proximo_pag = date(hoje.year + 1, 1, dia_pag)
+        except ValueError:
+            # Caso o dia_pag seja 31 e o mês tenha 30 dias
+            proximo_pag = date(hoje.year, hoje.month + 1, 1) # Simplificação
+
+        dias_restantes = max(1, (proximo_pag - hoje).days)
+
+        saldo_real = self.get_total_balance()
+        contas_abertas_list = self.get_bills(is_paid=False)
+        contas_abertas = sum(t.amount for t in contas_abertas_list)
+
+        disponivel_total = saldo_real - contas_abertas
+
+        meta = self.settings.get("meta", 0.0)
+        limite_com_meta = max(0.0, (disponivel_total - meta) / dias_restantes)
+
+        # Multiplicadores
+        multiplicadores = {0: 0.8, 4: 1.2, 5: 1.1}
+        multiplicador = multiplicadores.get(hoje.weekday(), 1.0)
+
+        teto = self.settings.get("teto", 0.0)
+        base_limite = min(limite_com_meta, teto) if teto > 0 else limite_com_meta
+        exibido = base_limite * multiplicador
+        is_teto = teto > 0 and limite_com_meta > teto
+
+        sobra_prevista = disponivel_total - (exibido * dias_restantes)
+
+        if meta > 0:
+            saude = min(1.0, max(0.0, sobra_prevista / meta))
+        else:
+            saude = 1.0 if sobra_prevista >= 0 else 0.0
+
+        return {
+            "limite_diario": round(exibido, 2),
+            "is_teto": is_teto,
+            "contas_abertas": round(contas_abertas, 2),
+            "sobra_prevista": round(sobra_prevista, 2),
+            "saude_meta": saude,
+            "dias_restantes": dias_restantes
+        }
