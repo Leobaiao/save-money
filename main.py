@@ -11,9 +11,15 @@ async def main(page: ft.Page):
     # --- PERSISTÊNCIA (SharedPreferences) ---
     storage = ft.SharedPreferences()
     page.overlay.append(storage)
+    page.update()
 
     async def get_state():
-        state = await storage.get("user_data")
+        try:
+            # Tenta obter os dados, mas com um pequeno delay inicial se necessário
+            state = await storage.get("user_data")
+        except Exception:
+            state = None
+            
         if state:
             import json
             return json.loads(state)
@@ -67,7 +73,7 @@ async def main(page: ft.Page):
         badge_teto.visible = teto_ativo
         txt_saldo.value = f"Banco: R$ {data['saldo']:,.2f}"
         txt_contas.value = f"A Pagar: R$ {total_contas:,.2f}"
-        await page.update_async()
+        page.update()
 
     # --- AÇÕES ---
     async def btn_registrar(e):
@@ -86,7 +92,7 @@ async def main(page: ft.Page):
         snackbar = ft.SnackBar(ft.Text("Gasto registrado!"))
         page.overlay.append(snackbar)
         snackbar.open = True
-        await page.update_async()
+        page.update()
 
     input_valor = ft.TextField(label="Valor Gasto", prefix=ft.Text("R$ "), keyboard_type=ft.KeyboardType.NUMBER)
 
@@ -137,7 +143,7 @@ async def main(page: ft.Page):
             )
 
         nome_input = ft.TextField(label="Nome da Conta", expand=True)
-        valor_input = ft.TextField(label="Valor", prefix_text="R$ ", expand=True, keyboard_type=ft.KeyboardType.NUMBER)
+        valor_input = ft.TextField(label="Valor", prefix=ft.Text("R$ "), expand=True, keyboard_type=ft.KeyboardType.NUMBER)
 
         async def add_conta(e):
             if not nome_input.value or not valor_input.value: return
@@ -161,10 +167,10 @@ async def main(page: ft.Page):
     async def show_settings():
         data = await get_state()
         
-        salario_input = ft.TextField(label="Saldo Atual no Banco", value=str(data["saldo"]), prefix_text="R$ ", keyboard_type=ft.KeyboardType.NUMBER)
+        salario_input = ft.TextField(label="Saldo Atual no Banco", value=str(data["saldo"]), prefix=ft.Text("R$ "), keyboard_type=ft.KeyboardType.NUMBER)
         dia_pag_input = ft.TextField(label="Dia do Pagamento", value=str(data["dia_pag"]), keyboard_type=ft.KeyboardType.NUMBER)
-        meta_input = ft.TextField(label="Meta de Sobra (Fim do Mês)", value=str(data["meta"]), prefix_text="R$ ", keyboard_type=ft.KeyboardType.NUMBER)
-        teto_input = ft.TextField(label="Teto de Gasto Diário (Opcional)", value=str(data["teto"]), prefix_text="R$ ", keyboard_type=ft.KeyboardType.NUMBER)
+        meta_input = ft.TextField(label="Meta de Sobra (Fim do Mês)", value=str(data["meta"]), prefix=ft.Text("R$ "), keyboard_type=ft.KeyboardType.NUMBER)
+        teto_input = ft.TextField(label="Teto de Gasto Diário (Opcional)", value=str(data["teto"]), prefix=ft.Text("R$ "), keyboard_type=ft.KeyboardType.NUMBER)
 
         async def save_settings(e):
             data["saldo"] = float(salario_input.value.replace(",", "."))
@@ -194,7 +200,7 @@ async def main(page: ft.Page):
             page.add(await show_contas())
         elif index == 2:
             page.add(await show_settings())
-        await page.update_async()
+        page.update()
 
     async def on_nav_change(e):
         await render_view(e.control.selected_index)
