@@ -1,0 +1,103 @@
+{
+  "transactions": [],
+  "categories": [
+    {
+      "id": "cat_salary",
+      "name": "Salário",
+      "icon": "work",
+      "color": "#4CAF50",
+      "type": "receita"
+    },
+    {
+      "id": "cat_freelance",
+      "name": "Freelance",
+      "icon": "computer",
+      "color": "#2196F3",
+      "type": "receita"
+    },
+    {
+      "id": "cat_investments",
+      "name": "Investimentos",
+      "icon": "trending_up",
+      "color": "#9C27B0",
+      "type": "receita"
+    },
+    {
+      "id": "cat_gifts_in",
+      "name": "Presentes",
+      "icon": "card_giftcard",
+      "color": "#E91E63",
+      "type": "receita"
+    },
+    {
+      "id": "cat_other_in",
+      "name": "Outros (Receita)",
+      "icon": "attach_money",
+      "color": "#00BCD4",
+      "type": "receita"
+    },
+    {
+      "id": "cat_food",
+      "name": "Alimentação",
+      "icon": "restaurant",
+      "color": "#FF9800",
+      "type": "despesa"
+    },
+    {
+      "id": "cat_transport",
+      "name": "Transporte",
+      "icon": "directions_car",
+      "color": "#607D8B",
+      "type": "despesa"
+    },
+    {
+      "id": "cat_housing",
+      "name": "Moradia",
+      "icon": "home",
+      "color": "#795548",
+      "type": "despesa"
+    },
+    {
+      "id": "cat_health",
+      "name": "Saúde",
+      "icon": "local_hospital",
+      "color": "#F44336",
+      "type": "despesa"
+    },
+    {
+      "id": "cat_education",
+      "name": "Educação",
+      "icon": "school",
+      "color": "#3F51B5",
+      "type": "despesa"
+    },
+    {
+      "id": "cat_leisure",
+      "name": "Lazer",
+      "icon": "sports_esports",
+      "color": "#FF5722",
+      "type": "despesa"
+    },
+    {
+      "id": "cat_shopping",
+      "name": "Compras",
+      "icon": "shopping_cart",
+      "color": "#E91E63",
+      "type": "despesa"
+    },
+    {
+      "id": "cat_bills",
+      "name": "Contas",
+      "icon": "receipt_long",
+      "color": "#FFC107",
+      "type": "despesa"
+    },
+    {
+      "id": "cat_other_out",
+      "name": "Outros (Despesa)",
+      "icon": "money_off",
+      "color": "#9E9E9E",
+      "type": "despesa"
+    }
+  ]
+}
