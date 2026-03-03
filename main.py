@@ -87,45 +87,101 @@ async def main(page: ft.Page):
         page.update()
 
     async def open_quick_expense(e):
+        # Seleção de Tipo (Gasto vs Lucro)
+        tipo_toggle = ft.SegmentedButton(
+            segments=[
+                ft.Segment(value="despesa", label=ft.Text("Gasto"), icon=ft.Icon(ft.Icons.TRENDING_DOWN_ROUNDED)),
+                ft.Segment(value="receita", label=ft.Text("Lucro"), icon=ft.Icon(ft.Icons.TRENDING_UP_ROUNDED)),
+            ],
+            selected={"despesa"},
+            allow_multiple_selection=False,
+            selected_icon=ft.Icon(ft.Icons.CHECK),
+        )
+
+        loja_input = ft.TextField(
+            label="Onde / De quem?",
+            prefix_icon=ft.Icons.STORE_ROUNDED,
+            border_radius=12,
+            focused_border_color=AppColors.PRIMARY,
+            text_size=14,
+        )
+
         valor_input = ft.TextField(
-            label="Quanto você gastou?",
+            label="Valor",
             prefix=ft.Text("R$ "),
             keyboard_type=ft.KeyboardType.NUMBER,
-            autofocus=True,
             border_radius=12,
-            border_color=AppColors.PRIMARY,
+            focused_border_color=AppColors.PRIMARY,
+            text_size=16,
+            weight="bold",
+        )
+
+        desc_input = ft.TextField(
+            label="Descrição (Opcional)",
+            prefix_icon=ft.Icons.NOTES_ROUNDED,
+            border_radius=12,
+            focused_border_color=AppColors.PRIMARY,
+            multiline=True,
+            min_lines=1,
+            max_lines=3,
+            text_size=13,
         )
         
         async def save_quick(e):
-            if not valor_input.value: return
+            if not valor_input.value or not loja_input.value:
+                page.overlay.append(ft.SnackBar(ft.Text("Preencha Loja e Valor!", color="white"), bgcolor=AppColors.EXPENSE, open=True))
+                page.update()
+                return
+
             try:
                 val = float(valor_input.value.replace(",", "."))
+                tipo = list(tipo_toggle.selected)[0]
+                
+                # Combinar loja e descrição se houver descrição
+                final_desc = loja_input.value
+                if desc_input.value:
+                    final_desc += f" ({desc_input.value})"
+
                 finance_data.add_transaction(Transaction(
-                    description="Gasto Rápido (FAB)",
+                    description=final_desc,
                     amount=val,
-                    type="despesa",
-                    category_id="cat_other_out"
+                    type=tipo,
+                    category_id="cat_other_in" if tipo == "receita" else "cat_other_out"
                 ))
+                
                 page.bottom_sheet.open = False
                 await atualizar_ui()
-                page.overlay.append(ft.SnackBar(ft.Text("Gasto registrado!"), bgcolor=AppColors.INCOME, open=True))
+                page.overlay.append(ft.SnackBar(
+                    ft.Text(f"{'Receita' if tipo == 'receita' else 'Gasto'} registrado!"), 
+                    bgcolor=AppColors.INCOME if tipo == "receita" else AppColors.PRIMARY, 
+                    open=True
+                ))
                 page.update()
-            except ValueError: pass
+            except ValueError:
+                page.overlay.append(ft.SnackBar(ft.Text("Valor inválido!", color="white"), bgcolor=AppColors.EXPENSE, open=True))
+                page.update()
 
         page.bottom_sheet = ft.BottomSheet(
             ft.Container(
                 ft.Column(
                     [
-                        ft.Text("REGISTRAR GASTO", size=16, weight="bold", color=AppColors.PRIMARY),
+                        ft.Row([
+                            ft.Icon(ft.Icons.ADD_CIRCLE_OUTLINE_ROUNDED, color=AppColors.PRIMARY),
+                            ft.Text("NOVA TRANSAÇÃO RÁPIDA", size=16, weight="bold", color=AppColors.PRIMARY),
+                        ], alignment=ft.MainAxisAlignment.CENTER, spacing=10),
+                        tipo_toggle,
+                        loja_input,
                         valor_input,
+                        desc_input,
                         ft.ElevatedButton(
-                            "Confirmar Gasto",
-                            icon=ft.Icons.CHECK_CIRCLE_ROUNDED,
+                            "Registrar Agora",
+                            icon=ft.Icons.SAVE_ROUNDED,
                             on_click=save_quick,
+                            expand=True,
                             style=ft.ButtonStyle(
                                 bgcolor=AppColors.PRIMARY,
                                 color="white",
-                                padding=20,
+                                padding=15,
                                 shape=ft.RoundedRectangleBorder(radius=12),
                             ),
                         ),
@@ -133,13 +189,14 @@ async def main(page: ft.Page):
                     ],
                     tight=True,
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                    spacing=20,
+                    spacing=15,
                 ),
-                padding=30,
+                padding=25,
                 bgcolor=AppColors.DARK_SURFACE if is_dark else ft.Colors.WHITE,
-                border_radius=ft.border_radius.only(top_left=20, top_right=20),
+                border_radius=ft.border_radius.only(top_left=24, top_right=24),
             ),
             open=True,
+            is_scroll_controlled=True, # Importante para teclado mobile não sumir o conteúdo
         )
         page.update()
 
