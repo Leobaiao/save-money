@@ -1,7 +1,6 @@
 import flet as ft
 from datetime import datetime, date
 import json
-import re
 
 from models.data_model import FinanceData, Transaction
 from theme.app_theme import AppColors, AppStyle, get_dark_theme, get_light_theme
@@ -37,97 +36,8 @@ async def main(page: ft.Page):
 
     apply_theme()
 
-    # --- LEITOR DE QR CODE ---
-    active_scan_target = None
-
-    def on_scan_result(e):
-        nonlocal active_scan_target
-        if not e.data: return
-        
-        # Tentar extrair valor (ex: R$ 10,50 ou apenas 10.50)
-        price_match = re.search(r"(\d+[,.]\d{2})", e.data)
-        if price_match:
-            val = price_match.group(1).replace(",", ".")
-            if active_scan_target:
-                active_scan_target.value = val
-                page.update()
-        else:
-            # Se não achar preço, joga o texto bruto no campo
-            if active_scan_target:
-                active_scan_target.value = e.data
-                page.update()
-        
-        page.overlay.append(ft.SnackBar(ft.Text(f"Código lido: {e.data[:30]}..."), open=True))
-        page.update()
-
-    barcode_scanner = None
-    try:
-        barcode_scanner = ft.BarcodeScanner(on_result=on_scan_result)
-        page.overlay.append(barcode_scanner)
-    except AttributeError:
-        print("BarcodeScanner não suportado nesta versão do Flet. Ignore os botões de scan.")
-
-    async def start_scan(target_field):
-        nonlocal active_scan_target
-        if barcode_scanner:
-            active_scan_target = target_field
-            await barcode_scanner.scan()
-        else:
-            page.overlay.append(ft.SnackBar(ft.Text("Leitor de QR não suportado. Atualize o Flet!"), open=True))
-            page.update()
-
-    # --- COMPONENTES PERSISTENTES DA HOME (BURN RATE) ---
-    display_limite = ft.Text("R$ 0,00", size=42, weight="bold", color=AppColors.INCOME)
-    badge_teto = ft.Container(
-        content=ft.Text("TETO ATIVO", size=9, color="black", weight="bold"),
-        bgcolor=ft.Colors.YELLOW_400, 
-        padding=ft.Padding(6, 2, 6, 2),
-        border_radius=4,
-        visible=False
-    )
-    
-    bar_saude = ft.ProgressBar(
-        width=320,
-        height=12,
-        color=AppColors.INCOME,
-        bgcolor=ft.Colors.with_opacity(0.1, AppColors.PRIMARY),
-        border_radius=6
-    )
-    txt_saude_info = ft.Text("Saúde da Meta: 0% | Sobra: R$ 0,00", size=11, color=AppColors.DARK_TEXT_SECONDARY)
-    
-    input_valor = ft.TextField(
-        label="Gasto Rápido",
-        prefix=ft.Text("R$ "), 
-        keyboard_type=ft.KeyboardType.NUMBER,
-        border_radius=12,
-        focused_border_color=AppColors.PRIMARY,
-        height=50,
-        text_size=14,
-        content_padding=10
-    )
-
-    async def btn_registrar(e):
-        if not input_valor.value: return
-        try:
-            valor = float(input_valor.value.replace(",", "."))
-            if valor <= 0: raise ValueError
-        except ValueError: return
-            
-        finance_data.add_transaction(Transaction(
-            description="Gasto Rápido (Home)",
-            amount=valor,
-            type="despesa",
-            category_id="cat_other_out"
-        ))
-        
-        input_valor.value = ""
-        await atualizar_ui()
-        
-        page.overlay.append(ft.SnackBar(ft.Text("Gasto registrado!"), bgcolor=AppColors.INCOME, open=True))
-        page.update()
-
+    # --- QUICK EXPENSE FAB ---
     async def open_quick_expense(e):
-        # Seleção de Tipo (Gasto vs Lucro)
         tipo_toggle = ft.SegmentedButton(
             segments=[
                 ft.Segment(value="despesa", label=ft.Text("Gasto"), icon=ft.Icon(ft.Icons.TRENDING_DOWN_ROUNDED)),
@@ -177,7 +87,6 @@ async def main(page: ft.Page):
                 val = float(valor_input.value.replace(",", "."))
                 tipo = list(tipo_toggle.selected)[0]
                 
-                # Combinar loja e descrição se houver descrição
                 final_desc = loja_input.value
                 if desc_input.value:
                     final_desc += f" ({desc_input.value})"
@@ -189,7 +98,10 @@ async def main(page: ft.Page):
                     category_id="cat_other_in" if tipo == "receita" else "cat_other_out"
                 ))
                 
-                page.bottom_sheet.open = False
+                # Fechar bottom sheet
+                for ctrl in page.overlay:
+                    if isinstance(ctrl, ft.BottomSheet):
+                        ctrl.open = False
                 await atualizar_ui()
                 page.overlay.append(ft.SnackBar(
                     ft.Text(f"{'Receita' if tipo == 'receita' else 'Gasto'} registrado!"), 
@@ -201,7 +113,7 @@ async def main(page: ft.Page):
                 page.overlay.append(ft.SnackBar(ft.Text("Valor inválido!", color="white"), bgcolor=AppColors.EXPENSE, open=True))
                 page.update()
 
-        page.bottom_sheet = ft.BottomSheet(
+        bs = ft.BottomSheet(
             ft.Container(
                 ft.Column(
                     [
@@ -211,14 +123,7 @@ async def main(page: ft.Page):
                         ], alignment=ft.MainAxisAlignment.CENTER, spacing=10),
                         tipo_toggle,
                         loja_input,
-                        ft.Row([
-                            ft.Container(valor_input, expand=True),
-                            ft.IconButton(
-                                ft.Icons.QR_CODE_SCANNER_ROUNDED,
-                                icon_color=AppColors.PRIMARY,
-                                on_click=lambda _: start_scan(valor_input)
-                            )
-                        ], spacing=10),
+                        valor_input,
                         desc_input,
                         ft.Button(
                             "Registrar Agora",
@@ -244,68 +149,12 @@ async def main(page: ft.Page):
             ),
             open=True,
         )
+        page.overlay.append(bs)
         page.update()
 
+    # --- ATUALIZAR UI ---
     async def atualizar_ui():
-        res = finance_data.get_burn_rate_data()
-
-        display_limite.value = f"R$ {res['limite_diario']:,.2f}"
-        badge_teto.visible = res['is_teto']
-        
-        saude = res['saude_meta']
-        bar_saude.value = saude
-        bar_saude.color = AppColors.INCOME if saude >= 0.8 else ft.Colors.YELLOW_400 if saude > 0.4 else AppColors.EXPENSE
-        
-        status_txt = "Excelente" if saude >= 0.8 else "Atenção" if saude > 0.4 else "Crítico"
-        txt_saude_info.value = f"{status_txt} ({saude*100:.0f}%) | Sobra Prevista: R$ {res['sobra_prevista']:,.2f}"
-        
         await render_view(page.navigation_bar.selected_index)
-
-    def get_burn_rate_header():
-        nonlocal is_dark
-        return ft.Container(
-            content=ft.Column([
-                ft.Text("BURN RATE DIÁRIO", size=11, weight="bold", color=AppColors.DARK_TEXT_SECONDARY if is_dark else AppColors.LIGHT_TEXT_SECONDARY),
-                ft.Row([
-                    display_limite, 
-                    badge_teto
-                ], alignment=ft.MainAxisAlignment.CENTER, vertical_alignment=ft.CrossAxisAlignment.CENTER),
-                ft.Container(height=5),
-                ft.Column([
-                    ft.Row([txt_saude_info], alignment=ft.MainAxisAlignment.CENTER),
-                    bar_saude,
-                ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=5),
-                ft.Divider(height=30, color=ft.Colors.with_opacity(0.1, ft.Colors.GREY)),
-                ft.Row([
-                    ft.Container(input_valor, expand=True),
-                    ft.IconButton(
-                        ft.Icons.ADD_CIRCLE_ROUNDED, 
-                        icon_color=AppColors.PRIMARY, 
-                        icon_size=40,
-                        on_click=btn_registrar
-                    )
-                ], alignment=ft.MainAxisAlignment.CENTER),
-            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=5),
-            padding=20,
-            bgcolor=AppColors.DARK_SURFACE if is_dark else ft.Colors.WHITE,
-            border_radius=20,
-            border=ft.Border.all(1, AppColors.DARK_BORDER if is_dark else AppColors.LIGHT_BORDER),
-            margin=ft.Margin(0, 0, 0, 15)
-        )
-
-    # Injetar o botão de Scan no header da Home
-    def get_burn_rate_header_with_scan():
-        header = get_burn_rate_header()
-        # O header é um Container com uma Column
-        # A última Row tem o input e o botão de add. Vamos mudar para incluir o scan.
-        row_inputs = header.content.controls[-1] 
-        row_inputs.controls.insert(1, ft.IconButton(
-            ft.Icons.QR_CODE_SCANNER_ROUNDED,
-            icon_color=AppColors.PRIMARY,
-            on_click=lambda _: start_scan(input_valor),
-            tooltip="Escanear Nota/Preço"
-        ))
-        return header
 
     # --- NAVEGAÇÃO ---
     async def toggle_theme():
@@ -322,7 +171,6 @@ async def main(page: ft.Page):
     async def render_view(index):
         page.controls.clear()
 
-        # Helper para passar dados legados enquanto as páginas não são refatoradas
         legacy_data = {
             "dia_pag": finance_data.settings.get("dia_pag", 5),
             "meta": finance_data.settings.get("meta", 0.0),
@@ -339,7 +187,12 @@ async def main(page: ft.Page):
             finance_data.save()
 
         if index == 0:
-            page.add(build_dashboard(finance_data, is_dark, header_view=get_burn_rate_header_with_scan()))
+            page.add(build_dashboard(
+                finance_data, is_dark, page,
+                on_add_expense=open_quick_expense,
+                on_pay_bill=lambda: on_nav_change_direct(3),
+                on_refresh=atualizar_ui,
+            ))
         elif index == 1:
             page.add(build_transactions_page(finance_data, is_dark, page, on_refresh=atualizar_ui))
         elif index == 2:
@@ -350,6 +203,10 @@ async def main(page: ft.Page):
             page.add(build_settings_page(legacy_data, finance_data, is_dark, page, save_state_legacy, atualizar_ui, toggle_theme))
             
         page.update()
+
+    async def on_nav_change_direct(idx):
+        page.navigation_bar.selected_index = idx
+        await render_view(idx)
 
     page.navigation_bar = ft.NavigationBar(
         destinations=[

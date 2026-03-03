@@ -130,7 +130,7 @@ def build_transactions_page(
 
         error_text = ft.Text("", color=AppColors.EXPENSE, size=12, visible=False)
 
-        def save_transaction(e):
+        async def save_transaction(e):
             # Validação
             if not desc_field.value or not desc_field.value.strip():
                 error_text.value = "Preencha a descrição."
@@ -187,7 +187,7 @@ def build_transactions_page(
             dialog.open = False
             page.update()
             if on_refresh:
-                on_refresh()
+                await on_refresh()
 
         def close_dialog(e):
             dialog.open = False
@@ -242,12 +242,12 @@ def build_transactions_page(
         open_transaction_dialog(txn_id)
 
     def on_delete(txn_id):
-        def confirm_delete(e):
+        async def confirm_delete(e):
             data.delete_transaction(txn_id)
             confirm_dialog.open = False
             page.update()
             if on_refresh:
-                on_refresh()
+                await on_refresh()
 
         def cancel_delete(e):
             confirm_dialog.open = False
@@ -274,11 +274,11 @@ def build_transactions_page(
 
     # ─── Filtros ───────────────────────────────────────────────────────
 
-    def on_filter_change(e):
+    async def on_filter_change(e):
         value = e.control.data
         filter_type["value"] = value
         if on_refresh:
-            on_refresh()
+            await on_refresh()
 
     filter_buttons = ft.Row(
         [

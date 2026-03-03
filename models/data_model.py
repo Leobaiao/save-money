@@ -85,7 +85,8 @@ class FinanceData:
             "dia_pag": 5,
             "meta": 0.0,
             "teto": 0.0,
-            "is_dark": True
+            "is_dark": True,
+            "user_name": ""
         }
         self._load()
 
@@ -180,6 +181,16 @@ class FinanceData:
         if is_paid is not None:
             result = [t for t in result if t.is_paid == is_paid]
         return sorted(result, key=lambda t: t.date, reverse=True)
+
+    def get_upcoming_bills(self) -> dict:
+        """Retorna info sobre contas pendentes (não pagas e fixas)."""
+        pending = [t for t in self.transactions if t.is_fixed and not t.is_paid]
+        total = sum(t.amount for t in pending)
+        return {
+            "count": len(pending),
+            "total": round(total, 2),
+            "bills": pending[:5]  # top 5 para exibir
+        }
 
     # ─── Cálculos ──────────────────────────────────────────────────────────
 
