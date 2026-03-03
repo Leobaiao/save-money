@@ -90,10 +90,14 @@ async def main(page: ft.Page):
         contas_abertas = sum(t.amount for t in contas_abertas_list)
         
         disponivel_total = saldo_real - contas_abertas
-        limite_com_meta = max(0, (disponivel_total - data["meta"]) / dias_restantes)
+        # Multiplicadores comportamentais (Data Science)
+        # Sex: +20%, Sab: +10%, Seg: -20% (Compensação)
+        multiplicadores = {0: 0.8, 4: 1.2, 5: 1.1}
+        multiplicador = multiplicadores.get(hoje.weekday(), 1.0)
 
         teto = data["teto"]
-        exibido = min(limite_com_meta, teto) if teto > 0 else limite_com_meta
+        base_limite = min(limite_com_meta, teto) if teto > 0 else limite_com_meta
+        exibido = base_limite * multiplicador
         is_teto = teto > 0 and limite_com_meta > teto
 
         sobra_prevista = disponivel_total - (exibido * dias_restantes)
@@ -157,28 +161,48 @@ async def main(page: ft.Page):
         
         bar_saude.value = saude
         bar_saude.color = AppColors.INCOME if saude >= 0.9 else ft.Colors.YELLOW_400 if saude > 0.4 else AppColors.EXPENSE
-        txt_saude_info.value = f"Saúde da Meta: {saude*100:.0f}% | Sobra Prevista: R$ {sobra:,.2f}"
+        
+        status_txt = "Excelente" if saude >= 0.9 else "Regular" if saude > 0.4 else "Crítico"
+        txt_saude_info.value = f"{status_txt} ({saude*100:.0f}%) | Sobra: R$ {sobra:,.2f}"
         
         await render_view(page.navigation_bar.selected_index)
 
     def get_burn_rate_header():
         return ft.Container(
             content=ft.Column([
-                ft.Text("LIMITE PARA HOJE", size=12, weight="bold", color=AppColors.DARK_TEXT_SECONDARY),
-                ft.Row([display_limite, badge_teto], alignment=ft.MainAxisAlignment.CENTER, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+                ft.Text("CENTRAL DE SAÚDE FINANCEIRA", size=10, weight="bold", color=AppColors.DARK_TEXT_SECONDARY, letter_spacing=1.5),
                 ft.Container(height=5),
+                ft.Container(
+                    content=bar_saude,
+                    height=20,
+                    border_radius=10,
+                    width=350,
+                ),
                 txt_saude_info,
-                bar_saude,
-                ft.Container(height=15),
+                ft.Divider(height=25, color="transparent"),
+                ft.Text("LIMITE DIÁRIO SUGERIDO", size=10, weight="bold", color=AppColors.DARK_TEXT_SECONDARY, letter_spacing=1.2),
                 ft.Row([
-                    input_valor,
-                    ft.IconButton(ft.Icons.CHECK_CIRCLE_ROUNDED, icon_color=AppColors.INCOME, icon_size=40, on_click=btn_registrar)
+                    display_limite, 
+                    badge_teto
+                ], alignment=ft.MainAxisAlignment.CENTER, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+                ft.Container(height=10),
+                ft.Row([
+                    ft.Container(input_valor, width=200),
+                    ft.IconButton(
+                        ft.Icons.ADD_CIRCLE_ROUNDED, 
+                        icon_color=AppColors.PRIMARY, 
+                        icon_size=45, 
+                        on_click=btn_registrar,
+                        tooltip="Registrar Gasto Rápido"
+                    )
                 ], alignment=ft.MainAxisAlignment.CENTER),
-            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=0),
-            padding=20,
+            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=2),
+            padding=25,
             bgcolor=AppColors.DARK_SURFACE if is_dark else AppColors.LIGHT_SURFACE,
             border_radius=AppStyle.BORDER_RADIUS,
             border=ft.border.all(1, AppColors.DARK_BORDER if is_dark else AppColors.LIGHT_BORDER),
+            shadow=ft.BoxShadow(blur_radius=10, color="black12"),
+            margin=ft.margin.only(bottom=10)
         )
 
     # --- NAVEGAÇÃO ---
