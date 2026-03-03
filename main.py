@@ -8,28 +8,26 @@ async def main(page: ft.Page):
     page.window.height = 700
     page.padding = 20
 
-    # --- PERSISTÊNCIA (SharedPreferences) ---
-    storage = ft.SharedPreferences()
-    page.overlay.append(storage)
-    page.update()
+    # --- PERSISTÊNCIA (Arquivo Local JSON) ---
+    import json
+    import os
+    
+    DB_FILE = "user_data.json"
 
     async def get_state():
-        try:
-            # Tenta obter os dados, mas com um pequeno delay inicial se necessário
-            state = await storage.get("user_data")
-        except Exception:
-            state = None
-            
-        if state:
-            import json
-            return json.loads(state)
+        if os.path.exists(DB_FILE):
+            try:
+                with open(DB_FILE, "r") as f:
+                    return json.load(f)
+            except Exception:
+                pass
         return {
             "dia_pag": 5, "saldo": 0.0, "meta": 0.0, "teto": 0.0, "contas": []
         }
 
     async def save_state(data):
-        import json
-        await storage.set("user_data", json.dumps(data))
+        with open(DB_FILE, "w") as f:
+            json.dump(data, f, indent=4)
 
     # --- LÓGICA ECONÔMICA ---
     async def calcular_limite():
@@ -159,7 +157,7 @@ async def main(page: ft.Page):
         return ft.Column([
             ft.Text("MINHAS CONTAS", size=20, weight="bold"),
             ft.Row([nome_input, valor_input]),
-            ft.ElevatedButton("Adicionar Conta", icon=ft.Icons.ADD, on_click=add_conta),
+            ft.Button("Adicionar Conta", icon=ft.Icons.ADD, on_click=add_conta),
             ft.Divider(),
             contas_list
         ], expand=True)
@@ -188,7 +186,7 @@ async def main(page: ft.Page):
             meta_input,
             teto_input,
             ft.Container(height=20),
-            ft.ElevatedButton("Salvar Ajustes", icon=ft.Icons.SAVE, on_click=save_settings, width=400, height=50)
+            ft.Button("Salvar Ajustes", icon=ft.Icons.SAVE, on_click=save_settings, width=400, height=50)
         ], scroll=ft.ScrollMode.ADAPTIVE)
 
     # --- NAVEGAÇÃO ---
