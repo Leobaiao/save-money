@@ -47,30 +47,46 @@ async def main(page: ft.Page):
 
         contas_abertas = sum(float(c['valor']) for c in data["contas"] if not c['pago'])
         
-        # Fórmula: Saldo - Contas - Meta
-        disponivel = data["saldo"] - contas_abertas - data["meta"]
-        limite_real = max(0, disponivel / dias_restantes)
+        disponivel_total = data["saldo"] - contas_abertas
+        limite_com_meta = max(0, (disponivel_total - data["meta"]) / dias_restantes)
 
-        # Aplicação do Teto
         teto = data["teto"]
-        exibido = min(limite_real, teto) if teto > 0 else limite_real
-        is_teto = teto > 0 and limite_real > teto
+        exibido = min(limite_com_meta, teto) if teto > 0 else limite_com_meta
+        is_teto = teto > 0 and limite_com_meta > teto
 
-        return round(exibido, 2), is_teto, round(contas_abertas, 2)
+        # Cálculo da Saúde da Meta
+        sobra_prevista = disponivel_total - (exibido * dias_restantes)
+        meta = data["meta"]
+        if meta > 0:
+            saude = min(1.0, max(0.0, sobra_prevista / meta))
+        else:
+            saude = 1.0 if sobra_prevista >= 0 else 0.0
+
+        return round(exibido, 2), is_teto, round(contas_abertas, 2), round(sobra_prevista, 2), saude
 
     # --- COMPONENTES DE INTERFACE ---
     display_limite = ft.Text("R$ 0,00", size=50, weight="bold", color=ft.Colors.GREEN_ACCENT)
     badge_teto = ft.Container(content=ft.Text("TETO ATIVO", size=10, color="black"), bgcolor=ft.Colors.YELLOW_400, padding=5, border_radius=5, visible=False)
     txt_saldo = ft.Text("Saldo: R$ 0,00", size=16)
     txt_contas = ft.Text("A Pagar: R$ 0,00", size=16, color=ft.Colors.RED_400)
+    
+    # Barra de Saúde da Meta
+    bar_saude = ft.ProgressBar(width=300, height=8, color=ft.Colors.GREEN_400, bgcolor=ft.Colors.GREY_800)
+    txt_saude_info = ft.Text("Saúde da Meta: 0% | Sobra: R$ 0,00", size=12, color="grey")
 
     async def atualizar_ui():
-        limite, teto_ativo, total_contas = await calcular_limite()
+        limite, teto_ativo, total_contas, sobra, saude = await calcular_limite()
         data = await get_state()
         display_limite.value = f"R$ {limite:,.2f}"
         badge_teto.visible = teto_ativo
         txt_saldo.value = f"Banco: R$ {data['saldo']:,.2f}"
         txt_contas.value = f"A Pagar: R$ {total_contas:,.2f}"
+        
+        # Atualizar Barra de Saúde
+        bar_saude.value = saude
+        bar_saude.color = ft.Colors.GREEN_400 if saude >= 1.0 else ft.Colors.YELLOW_400 if saude > 0.5 else ft.Colors.RED_400
+        txt_saude_info.value = f"Saúde da Meta: {saude*100:.0f}% | Sobra Prevista: R$ {sobra:,.2f}"
+        
         page.update()
 
     # --- AÇÕES ---
@@ -111,6 +127,9 @@ async def main(page: ft.Page):
             ft.Text("LIMITE PARA HOJE", size=12, weight="bold", color="grey"),
             display_limite,
             badge_teto,
+            ft.Container(height=10),
+            txt_saude_info,
+            bar_saude,
             ft.Divider(height=40, color="transparent"),
             ft.Row([txt_saldo, txt_contas], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
             ft.Container(height=20),
