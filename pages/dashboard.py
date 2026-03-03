@@ -12,6 +12,7 @@ def build_dashboard(
     is_dark: bool,
     on_edit_txn=None,
     on_delete_txn=None,
+    header_view: ft.Control = None,
 ) -> ft.Container:
     """Constrói a página do Dashboard."""
 
@@ -118,7 +119,8 @@ def build_dashboard(
                     ],
                 ),
                 ft.Container(height=10),
-
+                header_view if header_view else ft.Container(),
+                ft.Container(height=10) if header_view else ft.Container(),
                 # Cards de resumo
                 summary_cards,
                 ft.Container(height=10),
