@@ -56,7 +56,7 @@ def create_transaction_card(
                                     content=ft.Text(cat_name, size=11, color="#FFFFFF"),
                                     bgcolor=cat_color,
                                     border_radius=6,
-                                    padding=ft.padding.symmetric(horizontal=8, vertical=2),
+                                    padding=ft.Padding(8, 2, 8, 2),
                                 ),
                                 ft.Text(formatted_date, size=11, color=sub_color),
                             ],
@@ -78,7 +78,7 @@ def create_transaction_card(
                             ft.Container(
                                 content=ft.Text("PENDENTE", size=9, weight="bold", color="white"),
                                 bgcolor=AppColors.EXPENSE,
-                                padding=ft.padding.symmetric(horizontal=6, vertical=2),
+                                padding=ft.Padding(6, 2, 6, 2),
                                 border_radius=4,
                                 visible=not txn.is_paid
                             )
@@ -92,12 +92,12 @@ def create_transaction_card(
                     icon_size=20,
                     items=[
                         ft.PopupMenuItem(
-                            text="Editar",
+                            content=ft.Text("Editar"),
                             icon=ft.Icons.EDIT_ROUNDED,
                             on_click=lambda e, tid=txn.id: on_edit(tid) if on_edit else None,
                         ),
                         ft.PopupMenuItem(
-                            text="Excluir",
+                            content=ft.Text("Excluir"),
                             icon=ft.Icons.DELETE_ROUNDED,
                             on_click=lambda e, tid=txn.id: on_delete(tid) if on_delete else None,
                         ),
@@ -107,9 +107,9 @@ def create_transaction_card(
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
             spacing=12,
         ),
-        padding=ft.padding.symmetric(horizontal=16, vertical=12),
+        padding=ft.Padding(16, 12, 16, 12),
         border_radius=AppStyle.BORDER_RADIUS_SM,
         bgcolor=bg_color,
-        border=ft.border.all(1, border_color),
+        border=ft.Border.all(1, border_color),
         animate=ft.Animation(AppStyle.ANIMATION_DURATION, ft.AnimationCurve.EASE_IN_OUT),
     )

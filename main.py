@@ -60,20 +60,28 @@ async def main(page: ft.Page):
         page.overlay.append(ft.SnackBar(ft.Text(f"Código lido: {e.data[:30]}..."), open=True))
         page.update()
 
-    barcode_scanner = ft.BarcodeScanner(on_result=on_scan_result)
-    page.overlay.append(barcode_scanner)
+    barcode_scanner = None
+    try:
+        barcode_scanner = ft.BarcodeScanner(on_result=on_scan_result)
+        page.overlay.append(barcode_scanner)
+    except AttributeError:
+        print("BarcodeScanner não suportado nesta versão do Flet. Ignore os botões de scan.")
 
     async def start_scan(target_field):
         nonlocal active_scan_target
-        active_scan_target = target_field
-        await barcode_scanner.scan()
+        if barcode_scanner:
+            active_scan_target = target_field
+            await barcode_scanner.scan()
+        else:
+            page.overlay.append(ft.SnackBar(ft.Text("Leitor de QR não suportado. Atualize o Flet!"), open=True))
+            page.update()
 
     # --- COMPONENTES PERSISTENTES DA HOME (BURN RATE) ---
     display_limite = ft.Text("R$ 0,00", size=42, weight="bold", color=AppColors.INCOME)
     badge_teto = ft.Container(
         content=ft.Text("TETO ATIVO", size=9, color="black", weight="bold"),
         bgcolor=ft.Colors.YELLOW_400, 
-        padding=ft.padding.symmetric(horizontal=6, vertical=2),
+        padding=ft.Padding(6, 2, 6, 2),
         border_radius=4,
         visible=False
     )
@@ -145,7 +153,7 @@ async def main(page: ft.Page):
             border_radius=12,
             focused_border_color=AppColors.PRIMARY,
             text_size=16,
-            weight="bold",
+            text_style=ft.TextStyle(weight="bold"),
         )
 
         desc_input = ft.TextField(
@@ -212,7 +220,7 @@ async def main(page: ft.Page):
                             )
                         ], spacing=10),
                         desc_input,
-                        ft.ElevatedButton(
+                        ft.Button(
                             "Registrar Agora",
                             icon=ft.Icons.SAVE_ROUNDED,
                             on_click=save_quick,
@@ -232,10 +240,9 @@ async def main(page: ft.Page):
                 ),
                 padding=25,
                 bgcolor=AppColors.DARK_SURFACE if is_dark else ft.Colors.WHITE,
-                border_radius=ft.border_radius.only(top_left=24, top_right=24),
+                border_radius=ft.BorderRadius(24, 24, 0, 0),
             ),
             open=True,
-            is_scroll_controlled=True, # Importante para teclado mobile não sumir o conteúdo
         )
         page.update()
 
@@ -282,8 +289,8 @@ async def main(page: ft.Page):
             padding=20,
             bgcolor=AppColors.DARK_SURFACE if is_dark else ft.Colors.WHITE,
             border_radius=20,
-            border=ft.border.all(1, AppColors.DARK_BORDER if is_dark else AppColors.LIGHT_BORDER),
-            margin=ft.margin.only(bottom=15)
+            border=ft.Border.all(1, AppColors.DARK_BORDER if is_dark else AppColors.LIGHT_BORDER),
+            margin=ft.Margin(0, 0, 0, 15)
         )
 
     # Injetar o botão de Scan no header da Home

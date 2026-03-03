@@ -50,7 +50,7 @@ def build_bills_page(
                 padding=10,
                 bgcolor=card_bg,
                 border_radius=AppStyle.BORDER_RADIUS_SM,
-                border=ft.border.all(1, border_color),
+                border=ft.Border.all(1, border_color),
             )
         )
 
@@ -102,7 +102,7 @@ def build_bills_page(
             ft.Text("Gerencie suas contas fixas e variáveis", size=14, color=sub_color),
             ft.Container(height=10),
             ft.Row([nome_input, valor_input], spacing=10),
-            ft.ElevatedButton(
+            ft.Button(
                 "Adicionar Conta", 
                 icon=ft.Icons.ADD_ROUNDED, 
                 on_click=add_conta,

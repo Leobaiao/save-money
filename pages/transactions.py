@@ -219,7 +219,7 @@ def build_transactions_page(
             ),
             actions=[
                 ft.TextButton("Cancelar", on_click=close_dialog),
-                ft.ElevatedButton(
+                ft.Button(
                     "Salvar",
                     on_click=save_transaction,
                     bgcolor=AppColors.PRIMARY,
@@ -260,7 +260,7 @@ def build_transactions_page(
             bgcolor=card_bg,
             actions=[
                 ft.TextButton("Cancelar", on_click=cancel_delete),
-                ft.ElevatedButton(
+                ft.Button(
                     "Excluir",
                     on_click=confirm_delete,
                     bgcolor=AppColors.EXPENSE,
@@ -285,9 +285,9 @@ def build_transactions_page(
             ft.Container(
                 content=ft.Text("Todos", size=13, color="#FFFFFF" if filter_type["value"] is None else sub_color),
                 bgcolor=AppColors.PRIMARY if filter_type["value"] is None else "transparent",
-                border=ft.border.all(1, AppColors.PRIMARY if filter_type["value"] is None else border_color),
+                border=ft.Border.all(1, AppColors.PRIMARY if filter_type["value"] is None else border_color),
                 border_radius=20,
-                padding=ft.padding.symmetric(horizontal=16, vertical=8),
+                padding=ft.Padding(16, 8, 16, 8),
                 on_click=on_filter_change,
                 data=None,
                 ink=True,
@@ -295,9 +295,9 @@ def build_transactions_page(
             ft.Container(
                 content=ft.Text("Receitas", size=13, color="#FFFFFF" if filter_type["value"] == "receita" else sub_color),
                 bgcolor=AppColors.INCOME if filter_type["value"] == "receita" else "transparent",
-                border=ft.border.all(1, AppColors.INCOME if filter_type["value"] == "receita" else border_color),
+                border=ft.Border.all(1, AppColors.INCOME if filter_type["value"] == "receita" else border_color),
                 border_radius=20,
-                padding=ft.padding.symmetric(horizontal=16, vertical=8),
+                padding=ft.Padding(16, 8, 16, 8),
                 on_click=on_filter_change,
                 data="receita",
                 ink=True,
@@ -305,9 +305,9 @@ def build_transactions_page(
             ft.Container(
                 content=ft.Text("Despesas", size=13, color="#FFFFFF" if filter_type["value"] == "despesa" else sub_color),
                 bgcolor=AppColors.EXPENSE if filter_type["value"] == "despesa" else "transparent",
-                border=ft.border.all(1, AppColors.EXPENSE if filter_type["value"] == "despesa" else border_color),
+                border=ft.Border.all(1, AppColors.EXPENSE if filter_type["value"] == "despesa" else border_color),
                 border_radius=20,
-                padding=ft.padding.symmetric(horizontal=16, vertical=8),
+                padding=ft.Padding(16, 8, 16, 8),
                 on_click=on_filter_change,
                 data="despesa",
                 ink=True,
@@ -315,9 +315,9 @@ def build_transactions_page(
             ft.Container(
                 content=ft.Text("Agendadas", size=13, color="#FFFFFF" if filter_type["value"] == "agendadas" else sub_color),
                 bgcolor=ft.Colors.YELLOW_700 if filter_type["value"] == "agendadas" else "transparent",
-                border=ft.border.all(1, ft.Colors.YELLOW_700 if filter_type["value"] == "agendadas" else border_color),
+                border=ft.Border.all(1, ft.Colors.YELLOW_700 if filter_type["value"] == "agendadas" else border_color),
                 border_radius=20,
-                padding=ft.padding.symmetric(horizontal=16, vertical=8),
+                padding=ft.Padding(16, 8, 16, 8),
                 on_click=on_filter_change,
                 data="agendadas",
                 ink=True,

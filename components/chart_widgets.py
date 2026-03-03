@@ -33,7 +33,7 @@ def create_bar_chart(
             padding=AppStyle.CARD_PADDING,
             border_radius=AppStyle.BORDER_RADIUS,
             bgcolor=bg_color,
-            border=ft.border.all(1, border_color),
+            border=ft.Border.all(1, border_color),
             height=height + 80,
             alignment=ft.Alignment.CENTER,
         )
@@ -51,7 +51,7 @@ def create_bar_chart(
             width=13,
             height=max(h, 2),
             bgcolor=color,
-            border_radius=ft.border_radius.only(top_left=3, top_right=3),
+            border_radius=ft.BorderRadius(3, 3, 0, 0),
         )
 
     def make_bar_group(d: dict) -> ft.Column:
@@ -121,7 +121,7 @@ def create_bar_chart(
         padding=AppStyle.CARD_PADDING,
         border_radius=AppStyle.BORDER_RADIUS,
         bgcolor=bg_color,
-        border=ft.border.all(1, border_color),
+        border=ft.Border.all(1, border_color),
         height=height + 60,
         shadow=ft.BoxShadow(
             spread_radius=0,
@@ -157,7 +157,7 @@ def create_pie_chart(
             padding=AppStyle.CARD_PADDING,
             border_radius=AppStyle.BORDER_RADIUS,
             bgcolor=bg_color,
-            border=ft.border.all(1, border_color),
+            border=ft.Border.all(1, border_color),
             height=height + 80,
             alignment=ft.Alignment.CENTER,
         )
@@ -207,19 +207,13 @@ def create_pie_chart(
                                 expand=filled,
                                 height=7,
                                 bgcolor=color,
-                                border_radius=ft.border_radius.only(
-                                    top_left=4, bottom_left=4,
-                                    top_right=4 if pct >= 99 else 0,
-                                    bottom_right=4 if pct >= 99 else 0,
-                                ),
+                                border_radius=ft.BorderRadius(4, 4, 4 if pct >= 99 else 0, 4 if pct >= 99 else 0),
                             ),
                             ft.Container(
                                 expand=empty,
                                 height=7,
                                 bgcolor=ft.Colors.with_opacity(0.08 if is_dark else 0.06, color),
-                                border_radius=ft.border_radius.only(
-                                    top_right=4, bottom_right=4,
-                                ),
+                                border_radius=ft.BorderRadius(0, 4, 4, 0),
                             ),
                         ],
                         spacing=0,
@@ -238,7 +232,7 @@ def create_pie_chart(
         padding=AppStyle.CARD_PADDING,
         border_radius=AppStyle.BORDER_RADIUS,
         bgcolor=bg_color,
-        border=ft.border.all(1, border_color),
+        border=ft.Border.all(1, border_color),
         shadow=ft.BoxShadow(
             spread_radius=0,
             blur_radius=AppStyle.SHADOW_BLUR,

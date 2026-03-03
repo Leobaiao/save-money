@@ -99,7 +99,7 @@ def build_reports_page(
         padding=AppStyle.CARD_PADDING,
         border_radius=AppStyle.BORDER_RADIUS,
         bgcolor=card_bg,
-        border=ft.border.all(1, border_color),
+        border=ft.Border.all(1, border_color),
         shadow=ft.BoxShadow(
             spread_radius=0,
             blur_radius=AppStyle.SHADOW_BLUR,
@@ -152,7 +152,7 @@ def build_reports_page(
         padding=AppStyle.CARD_PADDING,
         border_radius=AppStyle.BORDER_RADIUS,
         bgcolor=card_bg,
-        border=ft.border.all(1, border_color),
+        border=ft.Border.all(1, border_color),
         shadow=ft.BoxShadow(
             spread_radius=0,
             blur_radius=AppStyle.SHADOW_BLUR,

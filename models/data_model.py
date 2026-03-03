@@ -231,6 +231,10 @@ class FinanceData:
                 return cat
         return None
 
+    def get_categories_by_type(self, txn_type: str) -> list[Category]:
+        """Retorna categorias filtradas por tipo ('receita' ou 'despesa')."""
+        return [c for c in self.categories if c.type == txn_type]
+
     # ─── Lógica de Burn Rate ───────────────────────────────────────────────
 
     def get_burn_rate_data(self):

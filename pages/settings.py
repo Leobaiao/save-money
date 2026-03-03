@@ -125,7 +125,7 @@ def build_settings_page(
                 padding=20,
                 bgcolor=card_bg,
                 border_radius=AppStyle.BORDER_RADIUS,
-                border=ft.border.all(1, border_color),
+                border=ft.Border.all(1, border_color),
             ),
             
             ft.Container(height=10),
@@ -143,12 +143,12 @@ def build_settings_page(
                 padding=20,
                 bgcolor=card_bg,
                 border_radius=AppStyle.BORDER_RADIUS,
-                border=ft.border.all(1, border_color),
+                border=ft.Border.all(1, border_color),
             ),
             
             ft.Container(height=20),
             
-            ft.ElevatedButton(
+            ft.Button(
                 "Salvar Alterações", 
                 icon=ft.Icons.SAVE_ROUNDED, 
                 on_click=save_settings,

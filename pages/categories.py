@@ -98,7 +98,7 @@ def build_categories_page(
                     height=40,
                     border_radius=8,
                     bgcolor=AppColors.PRIMARY if is_sel else "transparent",
-                    border=ft.border.all(1, AppColors.PRIMARY if is_sel else border_color),
+                    border=ft.Border.all(1, AppColors.PRIMARY if is_sel else border_color),
                     alignment=ft.Alignment.CENTER,
                     on_click=lambda e, name=icon_name: select_icon(name),
                     data=icon_name,
@@ -121,7 +121,7 @@ def build_categories_page(
                     height=32,
                     border_radius=8,
                     bgcolor=color,
-                    border=ft.border.all(3 if is_sel else 0, "#FFFFFF"),
+                    border=ft.Border.all(3 if is_sel else 0, "#FFFFFF"),
                     on_click=lambda e, c=color: select_color(c),
                     shadow=ft.BoxShadow(blur_radius=4, color=ft.Colors.with_opacity(0.3, color)) if is_sel else None,
                 )
@@ -135,7 +135,7 @@ def build_categories_page(
             for item in icon_grid_items:
                 is_s = item.data == name
                 item.bgcolor = AppColors.PRIMARY if is_s else "transparent"
-                item.border = ft.border.all(1, AppColors.PRIMARY if is_s else border_color)
+                item.border = ft.Border.all(1, AppColors.PRIMARY if is_s else border_color)
                 item.content.color = "#FFFFFF" if is_s else sub_color
             page.update()
 
@@ -143,7 +143,7 @@ def build_categories_page(
             selected_color["value"] = color
             for i, c in enumerate(AVAILABLE_COLORS):
                 is_s = c == color
-                color_grid_items[i].border = ft.border.all(3 if is_s else 0, "#FFFFFF")
+                color_grid_items[i].border = ft.Border.all(3 if is_s else 0, "#FFFFFF")
                 color_grid_items[i].shadow = (
                     ft.BoxShadow(blur_radius=4, color=ft.Colors.with_opacity(0.3, c)) if is_s else None
                 )
@@ -211,7 +211,7 @@ def build_categories_page(
             ),
             actions=[
                 ft.TextButton("Cancelar", on_click=close_dialog),
-                ft.ElevatedButton(
+                ft.Button(
                     "Salvar",
                     on_click=save_category,
                     bgcolor=AppColors.PRIMARY,
@@ -250,7 +250,7 @@ def build_categories_page(
             bgcolor=card_bg,
             actions=[
                 ft.TextButton("Cancelar", on_click=cancel_delete),
-                ft.ElevatedButton(
+                ft.Button(
                     "Excluir",
                     on_click=confirm_delete,
                     bgcolor=AppColors.EXPENSE,
@@ -286,7 +286,7 @@ def build_categories_page(
                         ),
                         bgcolor=AppColors.INCOME if cat.type == "receita" else AppColors.EXPENSE,
                         border_radius=6,
-                        padding=ft.padding.symmetric(horizontal=8, vertical=3),
+                        padding=ft.Padding(8, 3, 8, 3),
                     ),
                     ft.IconButton(
                         icon=ft.Icons.EDIT_ROUNDED,
@@ -306,10 +306,10 @@ def build_categories_page(
                 vertical_alignment=ft.CrossAxisAlignment.CENTER,
                 spacing=12,
             ),
-            padding=ft.padding.symmetric(horizontal=16, vertical=10),
+            padding=ft.Padding(16, 10, 16, 10),
             border_radius=AppStyle.BORDER_RADIUS_SM,
             bgcolor=card_bg,
-            border=ft.border.all(1, border_color),
+            border=ft.Border.all(1, border_color),
         )
 
     income_cats = [build_category_card(c) for c in data.get_categories_by_type("receita")]

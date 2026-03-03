@@ -1,5 +1,28 @@
 {
-  "transactions": [],
+  "transactions": [
+    {
+      "id": "txn_34149b4047c4",
+      "description": "Gasto Rápido (Home)",
+      "amount": 33.0,
+      "type": "despesa",
+      "category_id": "cat_other_out",
+      "date": "2026-03-03",
+      "notes": "",
+      "is_paid": true,
+      "is_fixed": false
+    },
+    {
+      "id": "txn_994e24960f09",
+      "description": "Gasto Rápido (Home)",
+      "amount": 22.0,
+      "type": "despesa",
+      "category_id": "cat_other_out",
+      "date": "2026-03-03",
+      "notes": "",
+      "is_paid": true,
+      "is_fixed": false
+    }
+  ],
   "categories": [
     {
       "id": "cat_salary",
@@ -99,5 +122,11 @@
       "color": "#9E9E9E",
       "type": "despesa"
     }
-  ]
+  ],
+  "settings": {
+    "dia_pag": 5,
+    "meta": 0.0,
+    "teto": 0.0,
+    "is_dark": true
+  }
 }

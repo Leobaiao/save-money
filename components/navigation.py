@@ -89,7 +89,7 @@ def create_navigation_rail(
         ),
         width=AppStyle.NAV_WIDTH,
         bgcolor=bg_color,
-        border=ft.border.only(right=ft.BorderSide(1, border_color)),
-        padding=ft.padding.symmetric(vertical=10, horizontal=8),
+        border=ft.Border(right=ft.BorderSide(1, border_color)),
+        padding=ft.Padding(8, 10, 8, 10),
         animate=ft.Animation(AppStyle.ANIMATION_DURATION, ft.AnimationCurve.EASE_IN_OUT),
     )

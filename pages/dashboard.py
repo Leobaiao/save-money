@@ -168,7 +168,7 @@ def build_dashboard(
                     padding=AppStyle.CARD_PADDING,
                     border_radius=AppStyle.BORDER_RADIUS,
                     bgcolor=bg_card,
-                    border=ft.border.all(1, border_color),
+                    border=ft.Border.all(1, border_color),
                 ),
             ],
             spacing=0,
