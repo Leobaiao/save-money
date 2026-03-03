@@ -43,6 +43,17 @@
       "notes": "",
       "is_paid": false,
       "is_fixed": true
+    },
+    {
+      "id": "txn_4aeb2d025078",
+      "description": "teste  (bolo para o café )",
+      "amount": 15.0,
+      "type": "despesa",
+      "category_id": "cat_other_out",
+      "date": "2026-03-03",
+      "notes": "",
+      "is_paid": true,
+      "is_fixed": false
     }
   ],
   "categories": [
@@ -149,6 +160,7 @@
     "dia_pag": 5,
     "meta": 0.0,
     "teto": 0.0,
-    "is_dark": true
+    "is_dark": true,
+    "user_name": ""
   }
 }

@@ -19,6 +19,21 @@ async def main(page: ft.Page):
     page.window.width = 450
     page.window.height = 800
     page.padding = 0
+    page.window.prevent_close = True
+
+    # Botão voltar do Android: não fechar o app
+    async def on_window_event(e):
+        if e.data == "close":
+            if hasattr(page, 'navigation_bar') and page.navigation_bar.selected_index != 0:
+                # Se não está na Home, volta pra Home
+                page.navigation_bar.selected_index = 0
+                await render_view(0)
+            else:
+                # Se já está na Home, minimiza
+                page.window.minimized = True
+                page.update()
+
+    page.window.on_event = on_window_event
     
     # --- GERENCIADOR DE DADOS FINANCEIROS ---
     finance_data = FinanceData()

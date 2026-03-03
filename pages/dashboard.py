@@ -119,7 +119,7 @@ def build_dashboard(
         content=ft.Column([
             # Label
             ft.Row([
-                ft.Text("LIMITE DIÁRIO", size=11, weight="bold", color=sub_color, letter_spacing=1),
+                ft.Text("LIMITE DIÁRIO", size=11, weight="bold", color=sub_color),
                 ft.Container(
                     content=ft.Text("TETO" if is_teto else "", size=9, color="black", weight="bold"),
                     bgcolor=ft.Colors.YELLOW_400 if is_teto else "transparent",
