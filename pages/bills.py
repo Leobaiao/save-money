@@ -11,7 +11,7 @@ def build_bills_page(
     update_ui_callback,
     render_view_callback
 ) -> ft.Container:
-    """Página de gerenciamento de contas a pagar."""
+    """Página de gerenciamento de contas a pagar (Integrated with FinanceData)."""
     
     text_color = AppColors.DARK_TEXT if is_dark else AppColors.LIGHT_TEXT
     sub_color = AppColors.DARK_TEXT_SECONDARY if is_dark else AppColors.LIGHT_TEXT_SECONDARY
@@ -19,46 +19,40 @@ def build_bills_page(
     card_bg = AppColors.DARK_CARD if is_dark else AppColors.LIGHT_CARD
     border_color = AppColors.DARK_BORDER if is_dark else AppColors.LIGHT_BORDER
 
+    bills = finance_data.get_bills()
     contas_list_view = ft.Column(scroll=ft.ScrollMode.ADAPTIVE, expand=True)
 
-    async def toggle_pago(e, index):
+    async def toggle_pago(e, bill_id):
         is_pago = e.control.value
-        conta = data_state["contas"][index]
-        valor = float(conta["valor"])
+        bill = next((t for t in finance_data.transactions if t.id == bill_id), None)
+        if not bill: return
         
+        valor = bill.amount
         if is_pago:
             data_state["saldo"] -= valor
-            finance_data.add_transaction(Transaction(
-                description=f"Pagamento: {conta['nome']}",
-                amount=valor,
-                type="despesa",
-                category_id="cat_bills"
-            ))
         else:
             data_state["saldo"] += valor
             
-        data_state["contas"][index]["pago"] = is_pago
+        finance_data.update_transaction(bill_id, is_paid=is_pago)
         await save_state_callback(data_state)
         await update_ui_callback()
 
-    async def remover_conta(index):
-        data_state["contas"].pop(index)
-        await save_state_callback(data_state)
-        await render_view_callback(3) # Index da aba de contas
+    async def remover_conta(bill_id):
+        finance_data.delete_transaction(bill_id)
         await update_ui_callback()
 
-    for i, conta in enumerate(data_state["contas"]):
+    for i, bill in enumerate(bills):
         contas_list_view.controls.append(
             ft.Container(
                 content=ft.Row([
-                    ft.Checkbox(value=conta["pago"], on_change=lambda e, idx=i: toggle_pago(e, idx)),
+                    ft.Checkbox(value=bill.is_paid, on_change=lambda e, b_id=bill.id: toggle_pago(e, b_id)),
                     ft.Column([
-                        ft.Text(conta["nome"], size=16, weight=ft.FontWeight.W_600, color=text_color),
-                        ft.Text(f"R$ {float(conta['valor']):,.2f}", size=14, color=sub_color),
+                        ft.Text(bill.description, size=16, weight=ft.FontWeight.W_600, color=text_color),
+                        ft.Text(f"R$ {bill.amount:,.2f}", size=14, color=sub_color),
                     ], expand=True, spacing=0),
                     ft.IconButton(
                         ft.Icons.DELETE_OUTLINE_ROUNDED, 
-                        on_click=lambda e, idx=i: remover_conta(idx), 
+                        on_click=lambda e, b_id=bill.id: remover_conta(b_id), 
                         icon_color=AppColors.EXPENSE,
                         tooltip="Remover Conta"
                     )
@@ -99,13 +93,17 @@ def build_bills_page(
         except ValueError:
             return
 
-        data_state["contas"].append({
-            "nome": nome_input.value,
-            "valor": valor,
-            "pago": False
-        })
-        await save_state_callback(data_state)
-        await render_view_callback(3)
+        finance_data.add_transaction(Transaction(
+            description=nome_input.value,
+            amount=valor,
+            type="despesa",
+            category_id="cat_bills",
+            is_paid=False,
+            is_fixed=True
+        ))
+        
+        nome_input.value = ""
+        valor_input.value = ""
         await update_ui_callback()
 
     return ft.Container(

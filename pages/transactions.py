@@ -24,6 +24,8 @@ def build_transactions_page(
     filter_type = {"value": None}  # None = todos
 
     def get_filtered_transactions():
+        if filter_type["value"] == "agendadas":
+            return data.get_bills(is_paid=False)
         return data.get_transactions(type_filter=filter_type["value"])
 
     # ─── Dialog de Transação ───────────────────────────────────────────
@@ -308,6 +310,16 @@ def build_transactions_page(
                 padding=ft.padding.symmetric(horizontal=16, vertical=8),
                 on_click=on_filter_change,
                 data="despesa",
+                ink=True,
+            ),
+            ft.Container(
+                content=ft.Text("Agendadas", size=13, color="#FFFFFF" if filter_type["value"] == "agendadas" else sub_color),
+                bgcolor=ft.Colors.YELLOW_700 if filter_type["value"] == "agendadas" else "transparent",
+                border=ft.border.all(1, ft.Colors.YELLOW_700 if filter_type["value"] == "agendadas" else border_color),
+                border_radius=20,
+                padding=ft.padding.symmetric(horizontal=16, vertical=8),
+                on_click=on_filter_change,
+                data="agendadas",
                 ink=True,
             ),
         ],

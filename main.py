@@ -56,7 +56,24 @@ async def main(page: ft.Page):
                 proximo_pag = date(hoje.year + 1, 1, data["dia_pag"])
         
         dias_restantes = max(1, (proximo_pag - hoje).days)
-        contas_abertas = sum(float(c['valor']) for c in data["contas"] if not c['pago'])
+        
+        # Migração de dados legados (contas em SharedPreferences para financas.json)
+        if data.get("contas"):
+            for c in data["contas"]:
+                finance_data.add_transaction(Transaction(
+                    description=c["nome"],
+                    amount=float(c["valor"]),
+                    type="despesa",
+                    category_id="cat_bills",
+                    is_paid=c["pago"],
+                    is_fixed=True
+                ))
+            data["contas"] = []
+            await save_state(data)
+
+        # Buscar contas não pagas do FinanceData
+        contas_abertas_list = finance_data.get_bills(is_paid=False)
+        contas_abertas = sum(t.amount for t in contas_abertas_list)
         
         disponivel_total = data["saldo"] - contas_abertas
         limite_com_meta = max(0, (disponivel_total - data["meta"]) / dias_restantes)

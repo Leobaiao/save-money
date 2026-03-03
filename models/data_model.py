@@ -38,6 +38,8 @@ class Transaction:
     category_id: str = ""
     date: str = ""  # ISO format YYYY-MM-DD
     notes: str = ""
+    is_paid: bool = True  # Para transações agendadas/fixas
+    is_fixed: bool = False # Para diferenciar gastos rápidos de contas fixas
 
     def __post_init__(self):
         if not self.id:
@@ -154,6 +156,15 @@ class FinanceData:
             ]
         elif year:
             result = [t for t in result if datetime.fromisoformat(t.date).year == year]
+        
+        # Filtro padrão: apenas transações pagas (exceto se for para listagem de contas)
+        return sorted(result, key=lambda t: t.date, reverse=True)
+
+    def get_bills(self, is_paid: Optional[bool] = None) -> list[Transaction]:
+        """Retorna transações marcadas como fixas (contas)."""
+        result = [t for t in self.transactions if t.is_fixed]
+        if is_paid is not None:
+            result = [t for t in result if t.is_paid == is_paid]
         return sorted(result, key=lambda t: t.date, reverse=True)
 
     # ─── CRUD de Categorias ────────────────────────────────────────────────
