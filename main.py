@@ -15,30 +15,22 @@ from pages.settings import build_settings_page
 async def main(page: ft.Page):
     page.title = "SaveMoney"
     
-    # Configuração para Android Layout
-    page.window.width = 450
-    page.window.height = 800
+    # --- CONFIGURAÇÃO ANDROID NATIVA ---
     page.padding = 0
-    page.window.prevent_close = True
-
-    # Botão voltar do Android: não fechar o app
-    async def on_window_event(e):
-        if e.data == "close":
-            if hasattr(page, 'navigation_bar') and page.navigation_bar.selected_index != 0:
-                # Se não está na Home, volta pra Home
-                page.navigation_bar.selected_index = 0
-                await render_view(0)
-            else:
-                # Se já está na Home, minimiza
-                page.window.minimized = True
-                page.update()
-
-    page.window.on_event = on_window_event
+    page.theme_mode = ft.ThemeMode.DARK
     
-    # --- GERENCIADOR DE DADOS FINANCEIROS ---
-    finance_data = FinanceData()
+    # Suporte ao botão voltar físico do Android
+    async def on_back(e):
+        if page.navigation_bar.selected_index != 0:
+            page.navigation_bar.selected_index = 0
+            await render_view(0)
+        else:
+            # Comportamento padrão: o sistema minimiza ou fecha o app se estiver na Home
+            pass
+    page.on_back_event = on_back
 
-    # Estado reativo simples para o tema
+    # --- GERENCIADOR DE DADOS ---
+    finance_data = FinanceData()
     is_dark = finance_data.settings.get("is_dark", True)
 
     def apply_theme():
@@ -51,11 +43,9 @@ async def main(page: ft.Page):
 
     apply_theme()
 
-    # --- QUICK EXPENSE FAB ---
+    # --- REGISTRO RÁPIDO (BOTTOM SHEET) ---
     async def open_quick_expense(e):
-        # Estado do tipo selecionado
         tipo_state = {"value": "despesa"}
-        
         tipo_label = ft.Text("GASTO", size=14, weight="bold", color=AppColors.EXPENSE)
         
         def toggle_tipo(ev):
@@ -78,114 +68,63 @@ async def main(page: ft.Page):
             icon_color=AppColors.EXPENSE,
             icon_size=28,
             on_click=toggle_tipo,
-            tooltip="Alternar Gasto/Receita",
         )
         
-        tipo_toggle = ft.Container(
-            content=ft.Row([
-                toggle_btn,
-                tipo_label,
-            ], alignment=ft.MainAxisAlignment.CENTER, spacing=8),
-            border_radius=12,
-            border=ft.Border.all(1, AppColors.DARK_BORDER if is_dark else AppColors.LIGHT_BORDER),
-            padding=ft.Padding(10, 6, 10, 6),
-        )
-
         loja_input = ft.TextField(
-            label="Onde / De quem?",
-            prefix_icon=ft.Icons.STORE_ROUNDED,
+            label="Local/Loja", 
+            prefix_icon=ft.Icons.STORE_ROUNDED, 
             border_radius=12,
-            focused_border_color=AppColors.PRIMARY,
-            text_size=14,
-        )
-
-        valor_input = ft.TextField(
-            label="Valor",
-            prefix=ft.Text("R$ "),
-            keyboard_type=ft.KeyboardType.NUMBER,
-            border_radius=12,
-            focused_border_color=AppColors.PRIMARY,
-            text_size=16,
-            text_style=ft.TextStyle(weight="bold"),
-        )
-
-        desc_input = ft.TextField(
-            label="Descrição (Opcional)",
-            prefix_icon=ft.Icons.NOTES_ROUNDED,
-            border_radius=12,
-            focused_border_color=AppColors.PRIMARY,
-            multiline=True,
-            min_lines=1,
-            max_lines=3,
-            text_size=13,
+            focused_border_color=AppColors.PRIMARY
         )
         
-        async def save_quick(e):
-            if not valor_input.value or not loja_input.value:
-                page.overlay.append(ft.SnackBar(ft.Text("Preencha Loja e Valor!", color="white"), bgcolor=AppColors.EXPENSE, open=True))
-                page.update()
-                return
+        valor_input = ft.TextField(
+            label="Valor", 
+            prefix=ft.Text("R$ "), 
+            keyboard_type=ft.KeyboardType.NUMBER, 
+            border_radius=12,
+            focused_border_color=AppColors.PRIMARY,
+            text_style=ft.TextStyle(weight="bold")
+        )
 
+        async def save_quick(ev):
+            if not valor_input.value:
+                return
             try:
                 val = float(valor_input.value.replace(",", "."))
                 tipo = tipo_state["value"]
-                
-                final_desc = loja_input.value
-                if desc_input.value:
-                    final_desc += f" ({desc_input.value})"
-
                 finance_data.add_transaction(Transaction(
-                    description=final_desc,
+                    description=loja_input.value or "Gasto Rápido",
                     amount=val,
                     type=tipo,
                     category_id="cat_other_in" if tipo == "receita" else "cat_other_out"
                 ))
-                
-                # Fechar bottom sheet
-                for ctrl in page.overlay:
-                    if isinstance(ctrl, ft.BottomSheet):
-                        ctrl.open = False
+                bs.open = False
                 await atualizar_ui()
-                page.overlay.append(ft.SnackBar(
-                    ft.Text(f"{'Receita' if tipo == 'receita' else 'Gasto'} registrado!"), 
-                    bgcolor=AppColors.INCOME if tipo == "receita" else AppColors.PRIMARY, 
-                    open=True
-                ))
                 page.update()
             except ValueError:
-                page.overlay.append(ft.SnackBar(ft.Text("Valor inválido!", color="white"), bgcolor=AppColors.EXPENSE, open=True))
-                page.update()
+                pass
 
         bs = ft.BottomSheet(
             ft.Container(
-                ft.Column(
-                    [
-                        ft.Row([
-                            ft.Icon(ft.Icons.ADD_CIRCLE_OUTLINE_ROUNDED, color=AppColors.PRIMARY),
-                            ft.Text("NOVA TRANSAÇÃO RÁPIDA", size=16, weight="bold", color=AppColors.PRIMARY),
-                        ], alignment=ft.MainAxisAlignment.CENTER, spacing=10),
-                        tipo_toggle,
-                        loja_input,
-                        valor_input,
-                        desc_input,
-                        ft.Button(
-                            "Registrar Agora",
-                            icon=ft.Icons.SAVE_ROUNDED,
-                            on_click=save_quick,
-                            expand=True,
-                            style=ft.ButtonStyle(
-                                bgcolor=AppColors.PRIMARY,
-                                color="white",
-                                padding=15,
-                                shape=ft.RoundedRectangleBorder(radius=12),
-                            ),
-                        ),
-                        ft.Container(height=10),
-                    ],
-                    tight=True,
-                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                    spacing=15,
-                ),
+                ft.Column([
+                    ft.Row([
+                        ft.Icon(ft.Icons.ADD_CIRCLE_OUTLINE_ROUNDED, color=AppColors.PRIMARY),
+                        ft.Text("REGISTRO RÁPIDO", size=16, weight="bold", color=AppColors.PRIMARY),
+                    ], alignment=ft.MainAxisAlignment.CENTER, spacing=10),
+                    ft.Row([toggle_btn, tipo_label], alignment=ft.MainAxisAlignment.CENTER),
+                    loja_input,
+                    valor_input,
+                    ft.ElevatedButton(
+                        "Salvar Agora", 
+                        on_click=save_quick, 
+                        bgcolor=AppColors.PRIMARY, 
+                        color="white",
+                        expand=True,
+                        height=50,
+                        style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=12))
+                    ),
+                    ft.Container(height=10)
+                ], tight=True, spacing=15, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
                 padding=25,
                 bgcolor=AppColors.DARK_SURFACE if is_dark else ft.Colors.WHITE,
                 border_radius=ft.BorderRadius(24, 24, 0, 0),
@@ -200,20 +139,9 @@ async def main(page: ft.Page):
         await render_view(page.navigation_bar.selected_index)
 
     # --- NAVEGAÇÃO ---
-    async def toggle_theme():
-        nonlocal is_dark
-        is_dark = not is_dark
-        finance_data.settings["is_dark"] = is_dark
-        finance_data.save()
-        apply_theme()
-        await atualizar_ui()
-
-    async def on_nav_change(e):
-        await render_view(e.control.selected_index)
-
     async def render_view(index):
         page.controls.clear()
-
+        
         legacy_data = {
             "dia_pag": finance_data.settings.get("dia_pag", 5),
             "meta": finance_data.settings.get("meta", 0.0),
@@ -247,13 +175,24 @@ async def main(page: ft.Page):
             
         page.update()
 
+    async def toggle_theme():
+        nonlocal is_dark
+        is_dark = not is_dark
+        finance_data.settings["is_dark"] = is_dark
+        finance_data.save()
+        apply_theme()
+        await atualizar_ui()
+
+    async def on_nav_change(e):
+        await render_view(e.control.selected_index)
+
     async def on_nav_change_direct(idx):
         page.navigation_bar.selected_index = idx
         await render_view(idx)
 
     page.navigation_bar = ft.NavigationBar(
         destinations=[
-            ft.NavigationBarDestination(icon=ft.Icons.DASHBOARD_OUTLINED, selected_icon=ft.Icons.DASHBOARD_ROUNDED, label="Home"),
+            ft.NavigationBarDestination(icon=ft.Icons.HOME_OUTLINED, selected_icon=ft.Icons.HOME_ROUNDED, label="Home"),
             ft.NavigationBarDestination(icon=ft.Icons.LIST_ALT_ROUNDED, label="Extrato"),
             ft.NavigationBarDestination(icon=ft.Icons.INSERT_CHART_OUTLINED, selected_icon=ft.Icons.INSERT_CHART_ROUNDED, label="Análise"),
             ft.NavigationBarDestination(icon=ft.Icons.RECEIPT_LONG_OUTLINED, selected_icon=ft.Icons.RECEIPT_LONG_ROUNDED, label="Contas"),
@@ -273,4 +212,5 @@ async def main(page: ft.Page):
 
     await atualizar_ui()
 
-ft.run(main)
+if __name__ == "__main__":
+    ft.app(target=main)
