@@ -1,61 +1,5 @@
 {
-  "transactions": [
-    {
-      "id": "txn_34149b4047c4",
-      "description": "Gasto Rápido (Home)",
-      "amount": 33.0,
-      "type": "despesa",
-      "category_id": "cat_other_out",
-      "date": "2026-03-03",
-      "notes": "",
-      "is_paid": true,
-      "is_fixed": false
-    },
-    {
-      "id": "txn_994e24960f09",
-      "description": "Gasto Rápido (Home)",
-      "amount": 22.0,
-      "type": "despesa",
-      "category_id": "cat_other_out",
-      "date": "2026-03-03",
-      "notes": "",
-      "is_paid": true,
-      "is_fixed": false
-    },
-    {
-      "id": "txn_1d67cf07494c",
-      "description": "Reconciliação de Saldo (Ajustes)",
-      "amount": 55.0,
-      "type": "receita",
-      "category_id": "cat_other_in",
-      "date": "2026-03-03",
-      "notes": "",
-      "is_paid": true,
-      "is_fixed": false
-    },
-    {
-      "id": "txn_f066fa67ad5d",
-      "description": "teste",
-      "amount": 2.0,
-      "type": "despesa",
-      "category_id": "cat_bills",
-      "date": "2026-03-03",
-      "notes": "",
-      "is_paid": false,
-      "is_fixed": true
-    },
-    {
-      "id": "txn_4aeb2d025078",
-      "description": "teste  (bolo para o café )",
-      "amount": 15.0,
-      "type": "despesa",
-      "category_id": "cat_other_out",
-      "date": "2026-03-03",
-      "notes": "",
-      "is_paid": true,
-      "is_fixed": false
-    }
-  ],
+  "transactions": [],
   "categories": [
     {
       "id": "cat_salary",
@@ -157,10 +101,11 @@
     }
   ],
   "settings": {
-    "dia_pag": 5,
-    "meta": 0.0,
+    "dia_pag": 13,
+    "meta": 100.0,
     "teto": 0.0,
     "is_dark": true,
-    "user_name": ""
+    "user_name": "Leo",
+    "user_photo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRAoVEiMX1Vb8XwdrpYQT63cCFYzCUTIRyBrfF0EGy6tdeod9yq2JyQTCF8vYmOSSX2bv3GOaQgQqbvBOGuXGHmwZMPRCnMBp3ok5urUA&s=10"
   }
 }

@@ -68,6 +68,42 @@ def build_settings_page(
         label_style=ft.TextStyle(color=sub_color)
     )
 
+    async def export_data(e):
+        path = finance_data.export_data()
+        if path:
+            snackbar = ft.SnackBar(ft.Text(f"Banco exportado para Downloads", color="#FFFFFF"), bgcolor=AppColors.INCOME)
+        else:
+            snackbar = ft.SnackBar(ft.Text("Erro ao exportar banco de dados.", color="#FFFFFF"), bgcolor=AppColors.EXPENSE)
+        page.overlay.append(snackbar)
+        snackbar.open = True
+        page.update()
+
+    async def reset_data_confirm(e):
+        def close_dlg(ev):
+            dlg.open = False
+            page.update()
+
+        async def do_reset(ev):
+            finance_data.reset_all_data()
+            dlg.open = False
+            await update_ui_callback()
+            snackbar = ft.SnackBar(ft.Text("Banco de dados resetado (Zerado).", color="#FFFFFF"), bgcolor=AppColors.INCOME)
+            page.overlay.append(snackbar)
+            snackbar.open = True
+            page.update()
+
+        dlg = ft.AlertDialog(
+            title=ft.Text("Confirmar Reset"),
+            content=ft.Text("Isso apagará TODOS os seus dados (transações e configurações) permanentemente. Deseja continuar?"),
+            actions=[
+                ft.TextButton("Cancelar", on_click=close_dlg),
+                ft.TextButton("Sim, Resetar", on_click=do_reset, color=AppColors.EXPENSE),
+            ],
+        )
+        page.overlay.append(dlg)
+        dlg.open = True
+        page.update()
+
     async def save_settings(e):
         try:
             current_saldo = finance_data.get_total_balance()
@@ -136,10 +172,38 @@ def build_settings_page(
                     ft.Text("Tema do Aplicativo", size=16, color=text_color, expand=True),
                     ft.Switch(
                         value=is_dark, 
-                        on_change=lambda e: toggle_theme_callback(),
+                        on_change=toggle_theme_callback,
                         active_color=AppColors.PRIMARY
                     )
                 ], alignment=ft.MainAxisAlignment.CENTER),
+                padding=20,
+                bgcolor=card_bg,
+                border_radius=AppStyle.BORDER_RADIUS,
+                border=ft.Border.all(1, border_color),
+            ),
+            
+            ft.Container(height=10),
+            
+            ft.Container(
+                content=ft.Column([
+                    ft.Text("Gerenciamento de Dados", size=18, weight=ft.FontWeight.W_600, color=text_color),
+                    ft.Row([
+                        ft.ElevatedButton(
+                            "Exportar Banco", 
+                            icon=ft.Icons.DOWNLOAD_ROUNDED, 
+                            on_click=export_data,
+                            style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=AppStyle.BORDER_RADIUS_SM)),
+                            expand=True
+                        ),
+                        ft.ElevatedButton(
+                            "Zerar App (Limpar tudo)", 
+                            icon=ft.Icons.DELETE_FOREVER_ROUNDED, 
+                            on_click=reset_data_confirm,
+                            style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=AppStyle.BORDER_RADIUS_SM), color=AppColors.EXPENSE),
+                            expand=True
+                        ),
+                    ], spacing=10),
+                ], spacing=15),
                 padding=20,
                 bgcolor=card_bg,
                 border_radius=AppStyle.BORDER_RADIUS,
@@ -157,7 +221,7 @@ def build_settings_page(
                 style=ft.ButtonStyle(
                     shape=ft.RoundedRectangleBorder(radius=AppStyle.BORDER_RADIUS_SM),
                 ),
-                width=400,
+                expand=True,
                 height=55
             )
         ], spacing=10, scroll=ft.ScrollMode.ADAPTIVE),

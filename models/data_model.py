@@ -37,9 +37,13 @@ class Transaction:
     type: str = "despesa"  # "receita" ou "despesa"
     category_id: str = ""
     date: str = ""  # ISO format YYYY-MM-DD
+    due_date: str = "" # Data de vencimento
+    payment_date: str = "" # Data de pagamento
     notes: str = ""
     is_paid: bool = True  # Para transações agendadas/fixas
     is_fixed: bool = False # Para diferenciar gastos rápidos de contas fixas
+    is_recurring: bool = False # Para contas mensais
+    recurrence_type: str = "none" # "none", "monthly", "yearly"
 
     def __post_init__(self):
         if not self.id:
@@ -76,74 +80,196 @@ class Category:
 
 
 class FinanceData:
-    """Gerenciador central de dados financeiros com persistência em JSON."""
+    """Gerenciador central de dados financeiros agora utilizando SQLite via FinanceRepository."""
 
     def __init__(self):
-        self.transactions: list[Transaction] = []
-        self.categories: list[Category] = []
-        self.settings: dict = {
+        from database import Database
+        from repositories.finance_repository import FinanceRepository
+        
+        self.db = Database()
+        self.repo = FinanceRepository(self.db)
+        
+        self.filter_type: str | None = None  # Para persistir filtro na UI
+        
+        # Carregar ou inicializar configurações padrão
+        self.settings = {
             "dia_pag": 5,
             "meta": 0.0,
             "teto": 0.0,
             "is_dark": True,
-            "user_name": ""
+            "user_name": "Usuário",
+            "user_photo": ""
         }
-        self._load()
+        
+        # Tentar carregar do banco
+        db_settings = self.repo.get_all_settings()
+        if db_settings:
+            self.settings.update(db_settings)
+        else:
+            # Se não houver settings no banco, talvez seja a primeira vez ou migração
+            self._handle_migration_or_init()
 
-    # ─── Persistência ──────────────────────────────────────────────────────
-
-    def _load(self):
+    def _handle_migration_or_init(self):
+        """Verifica se há dados no JSON legado e migra para o SQLite."""
         if os.path.exists(DATA_FILE):
+            print("Migrando dados do JSON para SQLite...")
             try:
                 with open(DATA_FILE, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                self.transactions = [Transaction.from_dict(t) for t in data.get("transactions", [])]
-                self.categories = [Category.from_dict(c) for c in data.get("categories", [])]
-                self.settings.update(data.get("settings", {}))
-            except (json.JSONDecodeError, KeyError):
-                self._init_defaults()
+                
+                # Migrar Categorias
+                legacy_cats = data.get("categories", [])
+                if legacy_cats:
+                    for cat_dict in legacy_cats:
+                        self.repo.add_category(Category.from_dict(cat_dict))
+                else:
+                    self._init_default_categories()
+                
+                # Migrar Transações
+                legacy_txns = data.get("transactions", [])
+                for txn_dict in legacy_txns:
+                    self.repo.add_transaction(Transaction.from_dict(txn_dict))
+                
+                # Migrar Configurações
+                legacy_settings = data.get("settings", {})
+                if legacy_settings:
+                    self.settings.update(legacy_settings)
+                    for k, v in legacy_settings.items():
+                        self.repo.set_setting(k, v)
+                
+                # Renomear arquivo para evitar nova migração
+                os.rename(DATA_FILE, DATA_FILE + ".bak")
+                print("Migração concluída com sucesso.")
+            except Exception as e:
+                print(f"Erro na migração: {e}")
+                self._init_default_categories()
         else:
-            self._init_defaults()
+            self._init_default_categories()
+            # Salvar settings padrão no banco
+            for k, v in self.settings.items():
+                self.repo.set_setting(k, v)
 
-    def _init_defaults(self):
-        self.categories = [Category.from_dict(c) for c in DEFAULT_CATEGORIES]
-        self.transactions = []
-        self.save()
+    def _init_default_categories(self):
+        existing = self.repo.get_categories()
+        if not existing:
+            for cat_dict in DEFAULT_CATEGORIES:
+                self.repo.add_category(Category.from_dict(cat_dict))
 
     def save(self):
-        os.makedirs(DATA_DIR, exist_ok=True)
-        data = {
-            "transactions": [t.to_dict() for t in self.transactions],
-            "categories": [c.to_dict() for c in self.categories],
-            "settings": self.settings
-        }
-        with open(DATA_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+        """Salva as configurações atuais no banco (Transações e categorias são salvas via repo)."""
+        for k, v in self.settings.items():
+            self.repo.set_setting(k, v)
 
-    # ─── CRUD de Transações ────────────────────────────────────────────────
+    # ─── CRUD de Transações (Delegado ao Repo) ───────────────────────────
 
     def add_transaction(self, txn: Transaction) -> Transaction:
-        self.transactions.append(txn)
-        self.save()
+        self.repo.add_transaction(txn)
         return txn
 
     def update_transaction(self, txn_id: str, **kwargs) -> Optional[Transaction]:
-        for txn in self.transactions:
-            if txn.id == txn_id:
-                for key, value in kwargs.items():
-                    if hasattr(txn, key):
-                        setattr(txn, key, value)
-                self.save()
-                return txn
-        return None
+        # Buscar transação original para checar recorrência
+        original = self.repo.get_transaction_by_id(txn_id)
+        
+        self.repo.update_transaction(txn_id, **kwargs)
+        
+        # Lógica de Recorrência
+        if original and kwargs.get("is_paid") is True and original.is_fixed and original.recurrence_type in ["monthly", "yearly"]:
+            # Se era uma conta pendente que foi paga, e é recorrente
+            if not original.is_paid:
+                self._create_next_recurring_instance(original)
+        
+        # Buscar a transação atualizada
+        return self.repo.get_transaction_by_id(txn_id)
+
+    def _create_next_recurring_instance(self, original_txn: Transaction):
+        """Cria a próxima instância de uma conta recorrente."""
+        try:
+            curr_date = datetime.fromisoformat(original_txn.date)
+            # due_date também pode ser ISO
+            due_date_obj = None
+            if original_txn.due_date:
+                due_date_obj = datetime.fromisoformat(original_txn.due_date)
+            
+            if original_txn.recurrence_type == "monthly":
+                import calendar
+                # Avançar um mês
+                month = curr_date.month + 1
+                year = curr_date.year
+                if month > 12:
+                    month = 1
+                    year += 1
+                
+                # Garantir que o dia existe no próximo mês (ex: 31 de Jan -> 28 de Fev)
+                last_day = calendar.monthrange(year, month)[1]
+                new_day = min(curr_date.day, last_day)
+                new_date = datetime(year, month, new_day)
+                
+                if due_date_obj:
+                    # Mesma lógica para due_date
+                    d_month = due_date_obj.month + 1
+                    d_year = due_date_obj.year
+                    if d_month > 12:
+                        d_month = 1
+                        d_year += 1
+                    d_last_day = calendar.monthrange(d_year, d_month)[1]
+                    d_new_day = min(due_date_obj.day, d_last_day)
+                    new_due_date = datetime(d_year, d_month, d_new_day)
+                else:
+                    new_due_date = None
+            
+            elif original_txn.recurrence_type == "yearly":
+                new_date = datetime(curr_date.year + 1, curr_date.month, curr_date.day)
+                if due_date_obj:
+                    new_due_date = datetime(due_date_obj.year + 1, due_date_obj.month, due_date_obj.day)
+                else:
+                    new_due_date = None
+            else:
+                return
+
+            new_txn = Transaction(
+                description=original_txn.description,
+                amount=original_txn.amount,
+                type=original_txn.type,
+                category_id=original_txn.category_id,
+                date=new_date.date().isoformat(),
+                due_date=new_due_date.date().isoformat() if new_due_date else "",
+                notes=original_txn.notes,
+                is_paid=False, # A nova sempre começa pendente
+                is_fixed=True,
+                is_recurring=True,
+                recurrence_type=original_txn.recurrence_type
+            )
+            self.add_transaction(new_txn)
+        except Exception as e:
+            print(f"Erro ao criar próxima instância recorrente: {e}")
 
     def delete_transaction(self, txn_id: str) -> bool:
-        original_len = len(self.transactions)
-        self.transactions = [t for t in self.transactions if t.id != txn_id]
-        if len(self.transactions) < original_len:
-            self.save()
-            return True
-        return False
+        self.repo.delete_transaction(txn_id)
+        return True
+
+    def clear_all_data(self):
+        """Apaga todas as transações."""
+        self.db.execute("DELETE FROM transactions")
+
+    def reset_all_data(self):
+        """Apaga o banco de dados e reinicia do zero (Limpeza total)."""
+        self.db.reset_database()
+        self._init_default_categories()
+        # Recarregar settings padrão
+        self.settings = {
+            "dia_pag": 5,
+            "meta": 0.0,
+            "teto": 0.0,
+            "is_dark": True,
+            "user_name": "Usuário",
+            "user_photo": ""
+        }
+        for k, v in self.settings.items():
+            self.repo.set_setting(k, v)
+
+    def export_data(self) -> Optional[str]:
+        """Exporta o banco de dados para a pasta Downloads."""
+        return self.db.export_database()
 
     def get_transactions(
         self,
@@ -153,13 +279,11 @@ class FinanceData:
         year: Optional[int] = None,
         only_paid: bool = True
     ) -> list[Transaction]:
-        result = self.transactions
+        # O repo já faz o filtro básico e o sort
+        result = self.repo.get_transactions(type_filter=type_filter, category_id=category_id)
+        
         if only_paid:
             result = [t for t in result if t.is_paid]
-        if type_filter:
-            result = [t for t in result if t.type == type_filter]
-        if category_id:
-            result = [t for t in result if t.category_id == category_id]
 
         filtered = []
         for t in result:
@@ -173,30 +297,36 @@ class FinanceData:
             else:
                 filtered.append(t)
 
-        return sorted(filtered, key=lambda t: t.date, reverse=True)
+        return filtered # Já vêm ordenados pelo repo
 
     def get_bills(self, is_paid: Optional[bool] = None) -> list[Transaction]:
         """Retorna transações marcadas como fixas (contas)."""
-        result = [t for t in self.transactions if t.is_fixed]
+        query = "SELECT * FROM transactions WHERE is_fixed = 1"
+        params = []
         if is_paid is not None:
-            result = [t for t in result if t.is_paid == is_paid]
-        return sorted(result, key=lambda t: t.date, reverse=True)
+            query += " AND is_paid = ?"
+            params.append(int(is_paid))
+        
+        query += " ORDER BY date DESC"
+        rows = self.db.fetch_all(query, tuple(params))
+        result = [self.repo._row_to_transaction(row) for row in rows]
+        return result
 
     def get_upcoming_bills(self) -> dict:
         """Retorna info sobre contas pendentes (não pagas e fixas)."""
-        pending = [t for t in self.transactions if t.is_fixed and not t.is_paid]
+        pending = self.get_bills(is_paid=False)
         total = sum(t.amount for t in pending)
         return {
             "count": len(pending),
             "total": round(total, 2),
-            "bills": pending[:5]  # top 5 para exibir
+            "bills": pending[:5]
         }
 
     # ─── Cálculos ──────────────────────────────────────────────────────────
 
     def get_total_balance(self) -> float:
-        receitas = sum(t.amount for t in self.transactions if t.type == "receita" and t.is_paid)
-        despesas = sum(t.amount for t in self.transactions if t.type == "despesa" and t.is_paid)
+        receitas = sum(t.amount for t in self.repo.get_transactions(type_filter="receita") if t.is_paid)
+        despesas = sum(t.amount for t in self.repo.get_transactions(type_filter="despesa") if t.is_paid)
         return receitas - despesas
 
     def get_balance(self, month: Optional[int] = None, year: Optional[int] = None) -> float:
@@ -217,9 +347,10 @@ class FinanceData:
     ) -> dict[str, float]:
         txns = self.get_transactions(type_filter="despesa", month=month, year=year)
         result: dict[str, float] = {}
+        # Cache de categorias para evitar múltiplas queries
+        cats = {c.id: c.name for c in self.repo.get_categories()}
         for t in txns:
-            cat = self.get_category_by_id(t.category_id)
-            cat_name = cat.name if cat else "Sem Categoria"
+            cat_name = cats.get(t.category_id, "Sem Categoria")
             result[cat_name] = result.get(cat_name, 0) + t.amount
         return result
 
@@ -237,22 +368,20 @@ class FinanceData:
         return summary
 
     def get_category_by_id(self, cat_id: str) -> Optional[Category]:
-        for cat in self.categories:
-            if cat.id == cat_id:
-                return cat
+        row = self.db.fetch_one("SELECT * FROM categories WHERE id = ?", (cat_id,))
+        if row:
+            return self.repo._row_to_category(row)
         return None
 
     def get_categories_by_type(self, txn_type: str) -> list[Category]:
-        """Retorna categorias filtradas por tipo ('receita' ou 'despesa')."""
-        return [c for c in self.categories if c.type == txn_type]
+        return self.repo.get_categories(type_filter=txn_type)
 
-    # ─── Lógica de Burn Rate ───────────────────────────────────────────────
+    # ─── Lógica de Burn Rate (Idêntica, apenas usa métodos delegados) ──────
 
     def get_burn_rate_data(self):
         hoje = date.today()
         dia_pag = self.settings.get("dia_pag", 5)
 
-        # Calcular próximo pagamento
         try:
             proximo_pag = date(hoje.year, hoje.month, dia_pag)
             if hoje.day >= dia_pag:
@@ -261,8 +390,7 @@ class FinanceData:
                 else:
                     proximo_pag = date(hoje.year + 1, 1, dia_pag)
         except ValueError:
-            # Caso o dia_pag seja 31 e o mês tenha 30 dias
-            proximo_pag = date(hoje.year, hoje.month + 1, 1) # Simplificação
+            proximo_pag = date(hoje.year, hoje.month + 1, 1)
 
         dias_restantes = max(1, (proximo_pag - hoje).days)
 
@@ -275,7 +403,6 @@ class FinanceData:
         meta = self.settings.get("meta", 0.0)
         limite_com_meta = max(0.0, (disponivel_total - meta) / dias_restantes)
 
-        # Multiplicadores
         multiplicadores = {0: 0.8, 4: 1.2, 5: 1.1}
         multiplicador = multiplicadores.get(hoje.weekday(), 1.0)
 

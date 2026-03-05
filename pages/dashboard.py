@@ -28,6 +28,7 @@ def build_dashboard(
     on_refresh=None,
     on_edit_txn=None,
     on_delete_txn=None,
+    on_profile_click=None,
 ) -> ft.Container:
     """Dashboard Android-first com Hero Header, Burn Rate, Quick Actions e Alertas."""
 
@@ -49,6 +50,7 @@ def build_dashboard(
     burn = data.get_burn_rate_data()
     upcoming = data.get_upcoming_bills()
     user_name = data.settings.get("user_name", "")
+    user_photo = data.settings.get("user_photo", "")
 
     # ═══════════════════════════════════════════════════════════════════════
     # 1. HERO HEADER — Saudação Pessoal + Data
@@ -81,11 +83,18 @@ def build_dashboard(
                     ft.Text(data_formatada, size=12, color=sub_color),
                 ], spacing=2, expand=True),
                 ft.Container(
-                    content=ft.Icon(ft.Icons.ACCOUNT_CIRCLE_ROUNDED, size=48, color=AppColors.PRIMARY),
+                    content=ft.Image(
+                        src=user_photo,
+                        width=52, height=52,
+                        fit=ft.BoxFit.COVER,
+                        border_radius=26,
+                        error_content=ft.Icon(ft.Icons.ACCOUNT_CIRCLE_ROUNDED, size=48, color=AppColors.PRIMARY),
+                    ) if user_photo else ft.Icon(ft.Icons.ACCOUNT_CIRCLE_ROUNDED, size=48, color=AppColors.PRIMARY),
                     width=52, height=52,
                     border_radius=26,
                     bgcolor=ft.Colors.with_opacity(0.15, AppColors.PRIMARY),
                     alignment=ft.Alignment.CENTER,
+                    on_click=on_profile_click,  # Passando direto para o Flet
                 ),
             ], vertical_alignment=ft.CrossAxisAlignment.CENTER),
         ]),
@@ -207,15 +216,15 @@ def build_dashboard(
         content=ft.Row([
             make_quick_action(
                 ft.Icons.ADD_SHOPPING_CART_ROUNDED, "Novo\nGasto",
-                AppColors.EXPENSE, on_add_expense,
+                AppColors.EXPENSE, lambda e: on_add_expense(e, "despesa"),
             ),
             make_quick_action(
                 ft.Icons.ATTACH_MONEY_ROUNDED, "Nova\nReceita",
-                AppColors.INCOME, on_add_expense,
+                AppColors.INCOME, lambda e: on_add_expense(e, "receita"),
             ),
             make_quick_action(
                 ft.Icons.RECEIPT_LONG_ROUNDED, "Pagar\nConta",
-                "#FF9800", lambda _: on_pay_bill() if on_pay_bill else None,
+                "#FF9800", on_pay_bill,
             ),
         ], alignment=ft.MainAxisAlignment.SPACE_EVENLY),
         padding=ft.Padding(10, 12, 10, 12),
@@ -255,7 +264,7 @@ def build_dashboard(
                 ft.Container(height=6),
                 ft.Container(
                     content=ft.Text("Ver Contas →", size=12, color=AppColors.PRIMARY, weight="bold"),
-                    on_click=lambda _: on_pay_bill() if on_pay_bill else None,
+                    on_click=on_pay_bill,
                     ink=True,
                     alignment=ft.Alignment.CENTER_RIGHT,
                 ),
@@ -294,13 +303,13 @@ def build_dashboard(
         txn_cards.append(create_transaction_card(txn, cat, is_dark, on_edit_txn, on_delete_txn))
 
     if not txn_cards:
+        from components.empty_state import EmptyState
         txn_cards.append(
-            ft.Container(
-                content=ft.Column([
-                    ft.Icon(ft.Icons.RECEIPT_LONG_ROUNDED, size=36, color=sub_color),
-                    ft.Text("Nenhuma transação registrada", size=13, color=sub_color),
-                ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=8),
-                height=100, alignment=ft.Alignment.CENTER,
+            EmptyState(
+                icon=ft.Icons.RECEIPT_LONG_ROUNDED,
+                message="Nenhuma transação registrada neste mês.",
+                cta_text="Adicionar Gasto",
+                on_cta_click=lambda e: on_add_expense(e, "despesa")
             )
         )
 

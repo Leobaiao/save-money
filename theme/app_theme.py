@@ -44,6 +44,7 @@ class AppStyle:
     BORDER_RADIUS_LG = 20
     CARD_PADDING = 20
     PAGE_PADDING = 30
+    SAFE_TOP_PADDING = 25  # Espaço reduzido para barra de status
     NAV_WIDTH = 80
     NAV_WIDTH_EXPANDED = 220
     ANIMATION_DURATION = 300

@@ -2,6 +2,8 @@ import flet as ft
 from datetime import datetime
 from theme.app_theme import AppColors, AppStyle
 from models.data_model import FinanceData
+from components.empty_state import EmptyState
+from components.header import Header
 from components.chart_widgets import create_bar_chart, create_pie_chart
 
 
@@ -40,7 +42,7 @@ def build_reports_page(
         label_style=ft.TextStyle(color=sub_color),
         color=text_color,
         focused_border_color=AppColors.PRIMARY,
-        width=120,
+        expand=True,
     )
 
     month_dropdown = ft.Dropdown(
@@ -53,7 +55,7 @@ def build_reports_page(
         label_style=ft.TextStyle(color=sub_color),
         color=text_color,
         focused_border_color=AppColors.PRIMARY,
-        width=180,
+        expand=True,
     )
 
     def on_period_change(e):
@@ -144,7 +146,10 @@ def build_reports_page(
                 ft.Text("Top Categorias de Despesa", size=16, weight=ft.FontWeight.W_600, color=text_color),
                 ft.Container(height=8),
                 *(top_cat_items if top_cat_items else [
-                    ft.Text("Sem despesas no período", size=13, color=sub_color)
+                    EmptyState(
+                        icon=ft.Icons.CATEGORY_ROUNDED,
+                        message="Sem despesas no período selecionado.",
+                    )
                 ]),
             ],
             spacing=10,
@@ -164,24 +169,17 @@ def build_reports_page(
         content=ft.Column(
             [
                 # Header
-                ft.Column(
+                Header(
+                    title="Relatórios",
+                    subtitle="Análise detalhada das suas finanças",
+                    icon=ft.Icons.INSERT_CHART_ROUNDED
+                ),
+                ft.Row(
                     [
-                        ft.Column(
-                            [
-                                ft.Text("Relatórios", size=28, weight=ft.FontWeight.BOLD, color=text_color),
-                                ft.Text("Análise detalhada das suas finanças", size=14, color=sub_color),
-                            ],
-                            spacing=4,
-                        ),
-                        ft.Row(
-                            [
-                                ft.Container(year_dropdown, expand=True),
-                                ft.Container(month_dropdown, expand=True),
-                            ],
-                            spacing=12,
-                        ),
+                        ft.Container(year_dropdown, expand=True),
+                        ft.Container(month_dropdown, expand=True),
                     ],
-                    spacing=16,
+                    spacing=12,
                 ),
                 ft.Container(height=16),
 

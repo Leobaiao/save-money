@@ -20,13 +20,12 @@ def build_transactions_page(
     border_color = AppColors.DARK_BORDER if is_dark else AppColors.LIGHT_BORDER
     input_bg = AppColors.DARK_SURFACE if is_dark else AppColors.LIGHT_BG
 
-    # Estado dos filtros
-    filter_type = {"value": None}  # None = todos
+    # Estado dos filtros persistido no model
 
     def get_filtered_transactions():
-        if filter_type["value"] == "agendadas":
+        if data.filter_type == "agendadas":
             return data.get_bills(is_paid=False)
-        return data.get_transactions(type_filter=filter_type["value"])
+        return data.get_transactions(type_filter=data.filter_type)
 
     # ─── Dialog de Transação ───────────────────────────────────────────
 
@@ -34,7 +33,7 @@ def build_transactions_page(
         editing = txn_id is not None
         txn = None
         if editing:
-            for t in data.transactions:
+            for t in data.get_transactions():
                 if t.id == txn_id:
                     txn = t
                     break
@@ -75,7 +74,7 @@ def build_transactions_page(
             label_style=ft.TextStyle(color=sub_color),
             color=text_color,
             focused_border_color=AppColors.PRIMARY,
-            width=200,
+            expand=True,
         )
 
         # Categorias baseadas no tipo selecionado
@@ -215,7 +214,7 @@ def build_transactions_page(
                     spacing=14,
                     tight=True,
                 ),
-                width=450,
+                expand=True,
             ),
             actions=[
                 ft.TextButton("Cancelar", on_click=close_dialog),
@@ -275,17 +274,16 @@ def build_transactions_page(
     # ─── Filtros ───────────────────────────────────────────────────────
 
     async def on_filter_change(e):
-        value = e.control.data
-        filter_type["value"] = value
+        data.filter_type = e.control.data
         if on_refresh:
             await on_refresh()
 
     filter_buttons = ft.Row(
         [
             ft.Container(
-                content=ft.Text("Todos", size=13, color="#FFFFFF" if filter_type["value"] is None else sub_color),
-                bgcolor=AppColors.PRIMARY if filter_type["value"] is None else "transparent",
-                border=ft.Border.all(1, AppColors.PRIMARY if filter_type["value"] is None else border_color),
+                content=ft.Text("Todos", size=13, color="#FFFFFF" if data.filter_type is None else sub_color),
+                bgcolor=AppColors.PRIMARY if data.filter_type is None else "transparent",
+                border=ft.Border.all(1, AppColors.PRIMARY if data.filter_type is None else border_color),
                 border_radius=20,
                 padding=ft.Padding(16, 8, 16, 8),
                 on_click=on_filter_change,
@@ -293,9 +291,9 @@ def build_transactions_page(
                 ink=True,
             ),
             ft.Container(
-                content=ft.Text("Receitas", size=13, color="#FFFFFF" if filter_type["value"] == "receita" else sub_color),
-                bgcolor=AppColors.INCOME if filter_type["value"] == "receita" else "transparent",
-                border=ft.Border.all(1, AppColors.INCOME if filter_type["value"] == "receita" else border_color),
+                content=ft.Text("Receitas", size=13, color="#FFFFFF" if data.filter_type == "receita" else sub_color),
+                bgcolor=AppColors.INCOME if data.filter_type == "receita" else "transparent",
+                border=ft.Border.all(1, AppColors.INCOME if data.filter_type == "receita" else border_color),
                 border_radius=20,
                 padding=ft.Padding(16, 8, 16, 8),
                 on_click=on_filter_change,
@@ -303,9 +301,9 @@ def build_transactions_page(
                 ink=True,
             ),
             ft.Container(
-                content=ft.Text("Despesas", size=13, color="#FFFFFF" if filter_type["value"] == "despesa" else sub_color),
-                bgcolor=AppColors.EXPENSE if filter_type["value"] == "despesa" else "transparent",
-                border=ft.Border.all(1, AppColors.EXPENSE if filter_type["value"] == "despesa" else border_color),
+                content=ft.Text("Despesas", size=13, color="#FFFFFF" if data.filter_type == "despesa" else sub_color),
+                bgcolor=AppColors.EXPENSE if data.filter_type == "despesa" else "transparent",
+                border=ft.Border.all(1, AppColors.EXPENSE if data.filter_type == "despesa" else border_color),
                 border_radius=20,
                 padding=ft.Padding(16, 8, 16, 8),
                 on_click=on_filter_change,
@@ -313,9 +311,9 @@ def build_transactions_page(
                 ink=True,
             ),
             ft.Container(
-                content=ft.Text("Agendadas", size=13, color="#FFFFFF" if filter_type["value"] == "agendadas" else sub_color),
-                bgcolor=ft.Colors.YELLOW_700 if filter_type["value"] == "agendadas" else "transparent",
-                border=ft.Border.all(1, ft.Colors.YELLOW_700 if filter_type["value"] == "agendadas" else border_color),
+                content=ft.Text("Agendadas", size=13, color="#FFFFFF" if data.filter_type == "agendadas" else sub_color),
+                bgcolor=ft.Colors.YELLOW_700 if data.filter_type == "agendadas" else "transparent",
+                border=ft.Border.all(1, ft.Colors.YELLOW_700 if data.filter_type == "agendadas" else border_color),
                 border_radius=20,
                 padding=ft.Padding(16, 8, 16, 8),
                 on_click=on_filter_change,
@@ -335,19 +333,13 @@ def build_transactions_page(
         txn_list.append(create_transaction_card(txn, cat, is_dark, on_edit, on_delete))
 
     if not txn_list:
+        from components.empty_state import EmptyState
         txn_list.append(
-            ft.Container(
-                content=ft.Column(
-                    [
-                        ft.Icon(ft.Icons.RECEIPT_LONG_ROUNDED, size=48, color=sub_color),
-                        ft.Text("Nenhuma transação encontrada", size=14, color=sub_color),
-                    ],
-                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                    alignment=ft.MainAxisAlignment.CENTER,
-                    spacing=8,
-                ),
-                height=200,
-                alignment=ft.Alignment.CENTER,
+            EmptyState(
+                icon=ft.Icons.RECEIPT_LONG_ROUNDED,
+                message="Nenhuma transação encontrada para este filtro.",
+                cta_text="Limpar Filtros",
+                on_cta_click=lambda _: setattr(data, "filter_type", None) or page.run_task(on_refresh)
             )
         )
 
@@ -361,49 +353,29 @@ def build_transactions_page(
         tooltip="Nova Transação",
     )
 
-    return ft.Stack(
-        [
-            ft.Container(
-                content=ft.Column(
-                    [
-                        # Header
-                        ft.Row(
-                            [
-                                ft.Column(
-                                    [
-                                        ft.Text("Transações", size=28, weight=ft.FontWeight.BOLD, color=text_color),
-                                        ft.Text(
-                                            f"{len(transactions)} transações",
-                                            size=14,
-                                            color=sub_color,
-                                        ),
-                                    ],
-                                    spacing=4,
-                                    expand=True,
-                                ),
-                            ],
-                        ),
-                        ft.Container(height=6),
-
-                        # Filtros
-                        filter_buttons,
-                        ft.Container(height=10),
-
-                        # Lista
-                        ft.Column(txn_list, spacing=8, scroll=ft.ScrollMode.AUTO, expand=True),
-                    ],
-                    spacing=0,
-                    expand=True,
+    from components.header import Header
+    
+    return ft.Container(
+        content=ft.Column(
+            [
+                Header(
+                    title="Transações", 
+                    subtitle=f"{len(transactions)} transações encontradas",
+                    icon=ft.Icons.RECEIPT_LONG_ROUNDED
                 ),
-                padding=AppStyle.PAGE_PADDING,
-                expand=True,
-                bgcolor=bg_color,
-            ),
-            ft.Container(
-                content=fab,
-                alignment=ft.Alignment.BOTTOM_RIGHT,
-                padding=30,
-            ),
-        ],
+                ft.Container(height=6),
+
+                # Filtros
+                filter_buttons,
+                ft.Container(height=10),
+
+                # Lista
+                ft.Column(txn_list, spacing=8, scroll=ft.ScrollMode.AUTO, expand=True),
+            ],
+            spacing=0,
+            expand=True,
+        ),
+        padding=AppStyle.PAGE_PADDING,
         expand=True,
+        bgcolor=bg_color,
     )

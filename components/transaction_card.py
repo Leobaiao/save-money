@@ -29,6 +29,19 @@ def create_transaction_card(
 
     icon_name = ft.Icons.ARROW_UPWARD_ROUNDED if is_income else ft.Icons.ARROW_DOWNWARD_ROUNDED
 
+    # Wrapper para lidar com callbacks assíncronos
+    async def handle_edit(e):
+        if on_edit:
+            res = on_edit(txn.id)
+            if hasattr(res, "__await__"):
+                await res
+
+    async def handle_delete(e):
+        if on_delete:
+            res = on_delete(txn.id)
+            if hasattr(res, "__await__"):
+                await res
+
     return ft.Container(
         content=ft.Row(
             [
@@ -62,8 +75,9 @@ def create_transaction_card(
                             ],
                             spacing=8,
                         ),
+                        ft.Text(txn.notes, size=11, color=sub_color, italic=True, max_lines=1, overflow=ft.TextOverflow.ELLIPSIS) if txn.notes else ft.Container(),
                     ],
-                    spacing=4,
+                    spacing=2,
                     expand=True,
                 ),
                 ft.Column(
@@ -94,12 +108,12 @@ def create_transaction_card(
                         ft.PopupMenuItem(
                             content=ft.Text("Editar"),
                             icon=ft.Icons.EDIT_ROUNDED,
-                            on_click=lambda e, tid=txn.id: on_edit(tid) if on_edit else None,
+                            on_click=handle_edit,
                         ),
                         ft.PopupMenuItem(
                             content=ft.Text("Excluir"),
                             icon=ft.Icons.DELETE_ROUNDED,
-                            on_click=lambda e, tid=txn.id: on_delete(tid) if on_delete else None,
+                            on_click=handle_delete,
                         ),
                     ],
                 ),
@@ -108,7 +122,7 @@ def create_transaction_card(
             spacing=12,
         ),
         padding=ft.Padding(16, 12, 16, 12),
-        border_radius=AppStyle.BORDER_RADIUS_SM,
+        border_radius=AppStyle.BORDER_RADIUS,
         bgcolor=bg_color,
         border=ft.Border.all(1, border_color),
         animate=ft.Animation(AppStyle.ANIMATION_DURATION, ft.AnimationCurve.EASE_IN_OUT),
