@@ -277,6 +277,10 @@ async def main(page: ft.Page):
         elif index == 6:
             page.add(build_mentor_page(finance_data, is_dark, page))
             
+        # Ocultar FAB na página do Mentor para não sobrepor o botão de enviar
+        if page.floating_action_button:
+            page.floating_action_button.visible = (index != 6)
+            
         page.update()
 
     async def toggle_theme(e=None):
